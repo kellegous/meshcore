@@ -34,6 +34,46 @@ type GetContactsOptions struct {
 	Since time.Time
 }
 
+// AddOrUpdateContact adds or updates a contact on the device.
+func (c *Conn) AddOrUpdateContact(ctx context.Context, contact *Contact) error {
+	notifier := c.tx.Notifier()
+
+	var err error
+
+	ch := make(chan struct{})
+
+	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
+		close(ch)
+	})
+	defer unsubOk()
+
+	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
+		err = readError(data[1:])
+		close(ch)
+	})
+	defer unsubErr()
+
+	var buf bytes.Buffer
+	if _, err := buf.Write([]byte{byte(CommandAddUpdateContact)}); err != nil {
+		return poop.Chain(err)
+	}
+
+	if err := contact.writeTo(&buf); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := c.tx.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+
+	select {
+	case <-ch:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 // GetContacts returns the list of contacts from the device.
 func (c *Conn) GetContacts(ctx context.Context, opts *GetContactsOptions) ([]*Contact, error) {
 	notifier := c.tx.Notifier()
@@ -83,11 +123,11 @@ func (c *Conn) GetContacts(ctx context.Context, opts *GetContactsOptions) ([]*Co
 			if !ok {
 				return contacts, nil
 			}
-			contact, err := ReadContact(bytes.NewReader(data[1:]))
-			if err != nil {
+			var contact Contact
+			if err := contact.readFrom(bytes.NewReader(data[1:])); err != nil {
 				return nil, poop.Chain(err)
 			}
-			contacts = append(contacts, contact)
+			contacts = append(contacts, &contact)
 		case <-ctx.Done():
 			return contacts, ctx.Err()
 		}
