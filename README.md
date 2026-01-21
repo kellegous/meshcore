@@ -3,6 +3,14 @@
 
 A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/MeshCore) device running the [Companion Radio Firmware](https://github.com/meshcore-dev/MeshCore/blob/main/examples/companion_radio/main.cpp).
 
+## Status
+
+**In Progress**
+
+```
+|████▎                                             | 8%
+```
+
 ## TODO:
 
 

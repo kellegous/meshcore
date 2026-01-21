@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"text/template"
 
 	"github.com/kellegous/poop"
@@ -34,7 +36,46 @@ func (s *Section) Check() string {
 	return "x"
 }
 
-var sections = []Section{
+type Sections []Section
+
+func (s Sections) Status() string {
+	if pct := s.Pct(); pct < 1 {
+		return "In Progress"
+	}
+	return "Complete"
+}
+
+func (s Sections) Pct() float64 {
+	total := 0
+	done := 0
+	for _, section := range s {
+		total += len(section.Task)
+		for _, task := range section.Task {
+			if task.Done {
+				done++
+			}
+		}
+	}
+	return float64(done) / float64(total)
+}
+
+func (s Sections) ProgressBar(width int) string {
+	pct := s.Pct()
+	symbols := []string{" ", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"}
+	numFull := int(pct * float64(width))
+	remainder := (pct * float64(width)) - float64(numFull)
+	symbolIndex := int(remainder * 8)
+
+	bar := strings.Repeat("█", numFull)
+	if numFull < width {
+		bar += symbols[symbolIndex]
+		bar += strings.Repeat(" ", width-numFull-1)
+	}
+
+	return fmt.Sprintf("```\n|%s| %d%%\n```", bar, int(pct*100))
+}
+
+var sections = Sections{
 	{
 		Title: "meshcore.Conn",
 		Task: []Task{
@@ -154,6 +195,12 @@ var readmeTemplate = template.Must(template.New("readme").Parse(`
 # Meshcore Companion Radio in Go
 
 A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/MeshCore) device running the [Companion Radio Firmware](https://github.com/meshcore-dev/MeshCore/blob/main/examples/companion_radio/main.cpp).
+
+## Status
+
+**{{ .Status }}**
+
+{{ .ProgressBar 50 }}
 
 ## TODO:
 
