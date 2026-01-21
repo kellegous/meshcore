@@ -1,9 +1,9 @@
 package bluetooth
 
 import (
-	"kellegous/meshy/internal/meshcore"
-
 	"tinygo.org/x/bluetooth"
+
+	"github.com/kellegous/meshcore"
 )
 
 type Transport struct {

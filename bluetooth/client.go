@@ -3,11 +3,12 @@ package bluetooth
 import (
 	"context"
 	"iter"
-	"kellegous/meshy/internal/meshcore"
 	"strings"
 
 	"github.com/kellegous/poop"
 	"tinygo.org/x/bluetooth"
+
+	"github.com/kellegous/meshcore"
 )
 
 var (
