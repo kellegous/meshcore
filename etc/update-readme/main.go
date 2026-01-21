@@ -189,6 +189,17 @@ var sections = Sections{
 			},
 		},
 	},
+	{
+		Title: "Transports",
+		Task: []Task{
+			{
+				Title: "BLE",
+			},
+			{
+				Title: "USB/Serial",
+			},
+		},
+	},
 }
 
 var readmeTemplate = template.Must(template.New("readme").Parse(`
