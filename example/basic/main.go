@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/kellegous/meshcore"
 	meshcore_bluetooth "github.com/kellegous/meshcore/bluetooth"
 	"github.com/kellegous/poop"
 	"tinygo.org/x/bluetooth"
@@ -46,6 +47,22 @@ func run(ctx context.Context) error {
 
 	for _, contact := range contacts {
 		fmt.Printf("contact: %+v\n", contact)
+	}
+
+	t, err := conn.GetDeviceTime(ctx)
+	if err != nil {
+		return poop.Chain(err)
+	}
+	fmt.Printf("device time: %s\n", t)
+
+	if len(contacts) > 0 {
+		contact := contacts[0]
+
+		sr, err := conn.SendTextMessage(ctx, &contact.PublicKey, "Hello, world!", meshcore.TextTypePlain)
+		if err != nil {
+			return poop.Chain(err)
+		}
+		fmt.Printf("sent message: %+v\n", sr)
 	}
 
 	return nil

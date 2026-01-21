@@ -200,6 +200,7 @@ func (c *Conn) GetBatteryVoltage(ctx context.Context) (uint16, error) {
 	}
 }
 
+// SendTextMessage sends a text message to the recipient.
 func (c *Conn) SendTextMessage(
 	ctx context.Context,
 	recipient *PublicKey,
@@ -208,13 +209,13 @@ func (c *Conn) SendTextMessage(
 ) (*SentResponse, error) {
 	notifier := c.tx.Notifier()
 
-	var sr *SentResponse
+	var sr SentResponse
 	var err error
 
 	ch := make(chan struct{})
 
 	unsubSent := notifier.Subscribe(ResponseSent, func(data []byte) {
-		sr, err = ReadSentResponse(bytes.NewReader(data[1:]))
+		err = sr.readFrom(bytes.NewReader(data[1:]))
 		close(ch)
 	})
 	defer unsubSent()
@@ -259,7 +260,7 @@ func (c *Conn) SendTextMessage(
 
 	select {
 	case <-ch:
-		return sr, err
+		return &sr, err
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
