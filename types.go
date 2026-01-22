@@ -79,7 +79,7 @@ func writeTime(w io.Writer, t time.Time) error {
 }
 
 func readLatLon(r io.Reader) (float64, float64, error) {
-	var lat, lon uint32
+	var lat, lon int32
 	if err := binary.Read(r, binary.LittleEndian, &lat); err != nil {
 		return 0, 0, poop.Chain(err)
 	}

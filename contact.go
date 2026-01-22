@@ -12,7 +12,7 @@ type Contact struct {
 	PublicKey  PublicKey
 	Type       byte
 	Flags      byte
-	OutPathLen int8
+	OutPathLen int8 // TODO(kellegous): remove this ... not needed.
 	OutPath    []byte
 	AdvName    string
 	LastAdvert time.Time
@@ -68,6 +68,11 @@ func (c *Contact) writeTo(w io.Writer) error {
 	if err := writeLatLon(w, c.AdvLat, c.AdvLon); err != nil {
 		return poop.Chain(err)
 	}
+
+	if err := writeTime(w, c.LastMod); err != nil {
+		return poop.Chain(err)
+	}
+
 	return nil
 }
 
