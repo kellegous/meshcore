@@ -12,7 +12,6 @@ type Contact struct {
 	PublicKey  PublicKey
 	Type       byte
 	Flags      byte
-	OutPathLen int8 // TODO(kellegous): remove this ... not needed.
 	OutPath    []byte
 	AdvName    string
 	LastAdvert time.Time
@@ -22,20 +21,12 @@ type Contact struct {
 }
 
 func (c *Contact) writeTo(w io.Writer) error {
-	if int(c.OutPathLen) > len(c.OutPath) {
-		return poop.Newf("outPathLen is greater than outPath length")
-	}
-
-	if c.OutPathLen < 0 {
-		return poop.Newf("outPathLen is less than 0")
-	}
-
-	if c.OutPathLen > 64 {
-		return poop.Newf("outPathLen is greater than 64")
+	if len(c.OutPath) > 64 {
+		return poop.Newf("outPath length is greater than 64")
 	}
 
 	outPath := make([]byte, 64)
-	copy(outPath[:c.OutPathLen], c.OutPath)
+	copy(outPath, c.OutPath)
 
 	if err := c.PublicKey.writeTo(w); err != nil {
 		return poop.Chain(err)
@@ -49,7 +40,7 @@ func (c *Contact) writeTo(w io.Writer) error {
 		return poop.Chain(err)
 	}
 
-	if err := binary.Write(w, binary.LittleEndian, c.OutPathLen); err != nil {
+	if err := binary.Write(w, binary.LittleEndian, int8(len(c.OutPath))); err != nil {
 		return poop.Chain(err)
 	}
 
@@ -89,7 +80,8 @@ func (c *Contact) readFrom(r io.Reader) error {
 		return poop.Chain(err)
 	}
 
-	if err := binary.Read(r, binary.LittleEndian, &c.OutPathLen); err != nil {
+	var outPathLen int8
+	if err := binary.Read(r, binary.LittleEndian, &outPathLen); err != nil {
 		return poop.Chain(err)
 	}
 
@@ -97,7 +89,7 @@ func (c *Contact) readFrom(r io.Reader) error {
 	if _, err := io.ReadFull(r, outPath[:]); err != nil {
 		return poop.Chain(err)
 	}
-	c.OutPath = outPath[:c.OutPathLen]
+	c.OutPath = outPath[:outPathLen]
 
 	var err error
 	c.AdvName, err = readCString(r, 32)

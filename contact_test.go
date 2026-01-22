@@ -21,7 +21,6 @@ func TestContactMarshal(t *testing.T) {
 				PublicKey:  pk,
 				Type:       1,
 				Flags:      2,
-				OutPathLen: 3,
 				OutPath:    []byte{4, 5, 6},
 				AdvName:    "test",
 				LastAdvert: time.Unix(420, 0),
