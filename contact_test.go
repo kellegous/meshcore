@@ -17,6 +17,7 @@ func TestContactMarshal(t *testing.T) {
 		ExpectedError error
 	}{
 		{
+			Name: "success",
 			Contact: &Contact{
 				PublicKey:  pk,
 				Type:       1,
@@ -29,19 +30,36 @@ func TestContactMarshal(t *testing.T) {
 				LastMod:    time.Unix(666, 0),
 			},
 		},
+		{
+			Name: "outPath length is greater than 64",
+			Contact: &Contact{
+				PublicKey:  pk,
+				Type:       1,
+				Flags:      2,
+				OutPath:    make([]byte, 65),
+				AdvName:    "test",
+				LastAdvert: time.Unix(420, 0),
+				AdvLat:     37.774929,
+				AdvLon:     -122.419416,
+				LastMod:    time.Unix(666, 0),
+			},
+			ExpectedError: poop.New("outPath length is greater than 64"),
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
 			var buf bytes.Buffer
+
 			if err := test.Contact.writeTo(&buf); err != nil && test.ExpectedError == nil {
-				t.Fatalf("expected error: %v", err)
+				t.Fatalf("unexpected error: %v", err)
 			} else if err == nil && test.ExpectedError != nil {
 				t.Fatalf("expected error: %v", test.ExpectedError)
 			} else if err != nil && test.ExpectedError != nil {
 				if err.Error() != test.ExpectedError.Error() {
 					t.Fatalf("expected error: %v, got %v", test.ExpectedError, err)
 				}
+				return
 			}
 
 			var b Contact
