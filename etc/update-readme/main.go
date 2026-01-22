@@ -100,6 +100,7 @@ var sections = Sections{
 			},
 			{
 				Title: "sendTextMessage",
+				Done:  true,
 			},
 			{
 				Title: "sendChannelTextMessage",
