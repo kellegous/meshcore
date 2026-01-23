@@ -144,7 +144,7 @@ func (c *Conn) GetDeviceTime(ctx context.Context) (time.Time, error) {
 	ch := make(chan struct{})
 
 	unsubTime := notifier.Subscribe(ResponseCurrTime, func(data []byte) {
-		t, err = ReadTime(bytes.NewReader(data[1:]))
+		t, err = readTime(bytes.NewReader(data[1:]))
 		close(ch)
 	})
 	defer unsubTime()

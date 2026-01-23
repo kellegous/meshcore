@@ -28,14 +28,6 @@ func (s *SentResponse) readFrom(r io.Reader) error {
 	return nil
 }
 
-func ReadTime(r io.Reader) (time.Time, error) {
-	var ts uint32
-	if err := binary.Read(r, binary.LittleEndian, &ts); err != nil {
-		return time.Time{}, poop.Chain(err)
-	}
-	return time.Unix(int64(ts), 0), nil
-}
-
 func readCString(r io.Reader, maxLen int) (string, error) {
 	buf := make([]byte, maxLen)
 	if _, err := io.ReadFull(r, buf[:]); err != nil {
@@ -72,6 +64,9 @@ func readTime(r io.Reader) (time.Time, error) {
 }
 
 func writeTime(w io.Writer, t time.Time) error {
+	if t.IsZero() {
+		t = time.Unix(0, 0)
+	}
 	if err := binary.Write(w, binary.LittleEndian, uint32(t.Unix())); err != nil {
 		return poop.Chain(err)
 	}
