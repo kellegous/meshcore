@@ -135,6 +135,31 @@ func (s *SentResponse) readFrom(r io.Reader) error {
 	return nil
 }
 
+type TelemetryResponse struct {
+	// Reserved byte
+	pubKeyPrefix  [6]byte
+	LPPSensorData []byte
+}
+
+func (t *TelemetryResponse) readFrom(r io.Reader) error {
+	var reserved byte
+	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := io.ReadFull(r, t.pubKeyPrefix[:]); err != nil {
+		return poop.Chain(err)
+	}
+
+	var err error
+	t.LPPSensorData, err = io.ReadAll(r)
+	if err != nil {
+		return poop.Chain(err)
+	}
+
+	return nil
+}
+
 func readCString(r io.Reader, maxLen int) (string, error) {
 	buf := make([]byte, maxLen)
 	if _, err := io.ReadFull(r, buf[:]); err != nil {
@@ -285,6 +310,28 @@ func writeSendTextMessageCommand(
 func writeRemoveContactCommand(w io.Writer, key *PublicKey) error {
 	var buf bytes.Buffer
 	if err := writeCommandCode(&buf, CommandRemoveContact); err != nil {
+		return poop.Chain(err)
+	}
+	if err := key.writeTo(&buf); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
+func writeGetTelemetryCommand(w io.Writer, key *PublicKey) error {
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandSendTelemetryReq); err != nil {
+		return poop.Chain(err)
+	}
+	if err := key.writePrefixTo(&buf, 6); err != nil {
+		return poop.Chain(err)
+	}
+	// reserved bytes
+	if _, err := buf.Write([]byte{0, 0, 0}); err != nil {
 		return poop.Chain(err)
 	}
 	if err := key.writeTo(&buf); err != nil {

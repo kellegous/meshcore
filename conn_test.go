@@ -77,30 +77,30 @@ func describe(v any) string {
 }
 
 func TestGetContacts(t *testing.T) {
-	t.Run("default options", func(t *testing.T) {
-		contactA := &Contact{
-			PublicKey:  *fakePublicKey(1),
-			Type:       1,
-			Flags:      2,
-			OutPath:    []byte{1, 2, 3},
-			AdvName:    "A",
-			LastAdvert: time.Unix(100, 0),
-			AdvLat:     37.7,
-			AdvLon:     -122.4,
-			LastMod:    time.Unix(101, 0),
-		}
-		contactB := &Contact{
-			PublicKey:  *fakePublicKey(2),
-			Type:       1,
-			Flags:      2,
-			OutPath:    []byte{1, 2, 3},
-			AdvName:    "B",
-			LastAdvert: time.Unix(200, 0),
-			AdvLat:     37.7,
-			AdvLon:     -122.4,
-			LastMod:    time.Unix(201, 0),
-		}
+	contactA := &Contact{
+		PublicKey:  *fakePublicKey(1),
+		Type:       1,
+		Flags:      2,
+		OutPath:    []byte{1, 2, 3},
+		AdvName:    "A",
+		LastAdvert: time.Unix(100, 0),
+		AdvLat:     37.7,
+		AdvLon:     -122.4,
+		LastMod:    time.Unix(101, 0),
+	}
+	contactB := &Contact{
+		PublicKey:  *fakePublicKey(2),
+		Type:       1,
+		Flags:      2,
+		OutPath:    []byte{1, 2, 3},
+		AdvName:    "B",
+		LastAdvert: time.Unix(200, 0),
+		AdvLat:     37.7,
+		AdvLon:     -122.4,
+		LastMod:    time.Unix(201, 0),
+	}
 
+	t.Run("default options", func(t *testing.T) {
 		expected := []*Contact{contactA, contactB}
 
 		controller := DoCommand(func(conn *Conn) {
@@ -126,6 +126,26 @@ func TestGetContacts(t *testing.T) {
 			controller.Notify(ResponseContact, buf.Bytes())
 		}
 
+		controller.Notify(ResponseEndOfContacts, nil)
+
+		controller.Wait()
+	})
+	t.Run("using since", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			contacts, err := conn.GetContacts(t.Context(), &GetContactsOptions{
+				Since: time.Unix(100, 0),
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(contacts) != 0 {
+				t.Fatalf("expected 0 contacts, got %d", len(contacts))
+			}
+		})
+
+		controller.Recv()
+
+		controller.Notify(ResponseContactsStart, nil)
 		controller.Notify(ResponseEndOfContacts, nil)
 
 		controller.Wait()

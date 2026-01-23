@@ -254,3 +254,41 @@ func (c *Conn) SendTextMessage(
 		return nil, ctx.Err()
 	}
 }
+
+func (c *Conn) GetTelemetry(
+	ctx context.Context,
+	key *PublicKey,
+) (any, error) {
+	notifier := c.tx.Notifier()
+
+	var telemetry TelemetryResponse
+	var err error
+
+	ch := make(chan struct{})
+
+	// TODO(kellegous): Why is this a push event?
+	unsubTelemetry := notifier.Subscribe(PushTelemetryResponse, func(data []byte) {
+		err = telemetry.readFrom(bytes.NewReader(data))
+		// TODO(kellegous): Validate that the response is, in fact, for
+		// the given contact key.
+		close(ch)
+	})
+	defer unsubTelemetry()
+
+	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
+		err = readError(data)
+		close(ch)
+	})
+	defer unsubErr()
+
+	if err := writeGetTelemetryCommand(c.tx, key); err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	select {
+	case <-ch:
+		return &telemetry, err
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
