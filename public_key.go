@@ -1,6 +1,8 @@
 package meshcore
 
 import (
+	"encoding/hex"
+	"encoding/json"
 	"io"
 
 	"github.com/kellegous/poop"
@@ -33,4 +35,9 @@ func (k *PublicKey) writePrefixTo(w io.Writer, n int) error {
 
 func (k *PublicKey) Prefix(n int) []byte {
 	return k.key[:n]
+}
+
+func (k *PublicKey) MarshalJSON() ([]byte, error) {
+	s := hex.EncodeToString(k.key[:])
+	return json.Marshal(s)
 }
