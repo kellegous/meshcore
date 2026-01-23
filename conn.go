@@ -44,7 +44,7 @@ func (c *Conn) AddOrUpdateContact(ctx context.Context, contact *Contact) error {
 	defer unsubOk()
 
 	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data[1:])
+		err = readError(data)
 		close(ch)
 	})
 	defer unsubErr()
@@ -75,7 +75,7 @@ func (c *Conn) RemoveContact(ctx context.Context, key *PublicKey) error {
 	defer unsubOk()
 
 	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data[1:])
+		err = readError(data)
 		close(ch)
 	})
 	defer unsubErr()
@@ -134,7 +134,7 @@ func (c *Conn) GetContacts(ctx context.Context, opts *GetContactsOptions) ([]*Co
 				return contacts, nil
 			}
 			var contact Contact
-			if err := contact.readFrom(bytes.NewReader(data[1:])); err != nil {
+			if err := contact.readFrom(bytes.NewReader(data)); err != nil {
 				return nil, poop.Chain(err)
 			}
 			contacts = append(contacts, &contact)
@@ -154,13 +154,13 @@ func (c *Conn) GetDeviceTime(ctx context.Context) (time.Time, error) {
 	ch := make(chan struct{})
 
 	unsubTime := notifier.Subscribe(ResponseCurrTime, func(data []byte) {
-		t, err = readTime(bytes.NewReader(data[1:]))
+		t, err = readTime(bytes.NewReader(data))
 		close(ch)
 	})
 	defer unsubTime()
 
 	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data[1:])
+		err = readError(data)
 		close(ch)
 	})
 	defer unsubErr()
@@ -187,13 +187,13 @@ func (c *Conn) GetBatteryVoltage(ctx context.Context) (uint16, error) {
 	ch := make(chan struct{})
 
 	unsubVoltage := notifier.Subscribe(ResponseBatteryVoltage, func(data []byte) {
-		err = binary.Read(bytes.NewReader(data[1:]), binary.LittleEndian, &voltage)
+		err = binary.Read(bytes.NewReader(data), binary.LittleEndian, &voltage)
 		close(ch)
 	})
 	defer unsubVoltage()
 
 	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data[1:])
+		err = readError(data)
 		close(ch)
 	})
 	defer unsubErr()
@@ -225,13 +225,13 @@ func (c *Conn) SendTextMessage(
 	ch := make(chan struct{})
 
 	unsubSent := notifier.Subscribe(ResponseSent, func(data []byte) {
-		err = sr.readFrom(bytes.NewReader(data[1:]))
+		err = sr.readFrom(bytes.NewReader(data))
 		close(ch)
 	})
 	defer unsubSent()
 
 	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data[1:])
+		err = readError(data)
 		close(ch)
 	})
 	defer unsubErr()

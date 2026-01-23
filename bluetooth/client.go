@@ -109,7 +109,7 @@ func (c *Client) Connect(ctx context.Context, address bluetooth.Address) (*meshc
 
 	frDevice.EnableNotifications(func(data []byte) {
 		code := meshcore.ResponseCode(data[0])
-		transport.notifier.Notify(code, data)
+		transport.notifier.Notify(code, data[1:])
 	})
 
 	return meshcore.NewConnection(transport), nil
