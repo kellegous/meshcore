@@ -8,7 +8,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
 **In Progress**
 
 ```
-|█████▍                                            | 10%
+|████████                                          | 16%
 ```
 
 ## TODO:
@@ -23,7 +23,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
 
  - [ ] meshcore.Conn
  
-   - [ ] addOrUpdateContact
+   - [x] addOrUpdateContact
  
    - [ ] deleteChannel
  
@@ -57,7 +57,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
  
    - [ ] reboot
  
-   - [ ] removeContact
+   - [x] removeContact
  
    - [ ] resetPath
  

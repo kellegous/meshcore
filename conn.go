@@ -61,6 +61,37 @@ func (c *Conn) AddOrUpdateContact(ctx context.Context, contact *Contact) error {
 	}
 }
 
+// RemoveContact removes a contact from the device.
+func (c *Conn) RemoveContact(ctx context.Context, key *PublicKey) error {
+	notifier := c.tx.Notifier()
+
+	var err error
+
+	ch := make(chan struct{})
+
+	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
+		close(ch)
+	})
+	defer unsubOk()
+
+	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
+		err = readError(data[1:])
+		close(ch)
+	})
+	defer unsubErr()
+
+	if err := writeRemoveContactCommand(c.tx, key); err != nil {
+		return poop.Chain(err)
+	}
+
+	select {
+	case <-ch:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 type GetContactsOptions struct {
 	Since time.Time
 }

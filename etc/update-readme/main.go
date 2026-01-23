@@ -126,9 +126,11 @@ var sections = Sections{
 			},
 			{
 				Title: "removeContact",
+				Done:  true,
 			},
 			{
 				Title: "addOrUpdateContact",
+				Done:  true,
 			},
 			{
 				Title: "setContactPath",
