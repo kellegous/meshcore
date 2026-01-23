@@ -30,10 +30,6 @@ func (c *Conn) Disconnect() error {
 	return c.tx.Disconnect()
 }
 
-type GetContactsOptions struct {
-	Since time.Time
-}
-
 // AddOrUpdateContact adds or updates a contact on the device.
 func (c *Conn) AddOrUpdateContact(ctx context.Context, contact *Contact) error {
 	notifier := c.tx.Notifier()
@@ -53,16 +49,7 @@ func (c *Conn) AddOrUpdateContact(ctx context.Context, contact *Contact) error {
 	})
 	defer unsubErr()
 
-	var buf bytes.Buffer
-	if _, err := buf.Write([]byte{byte(CommandAddUpdateContact)}); err != nil {
-		return poop.Chain(err)
-	}
-
-	if err := contact.writeTo(&buf); err != nil {
-		return poop.Chain(err)
-	}
-
-	if _, err := c.tx.Write(buf.Bytes()); err != nil {
+	if err := writeAddOrUpdateContactCommand(c.tx, contact); err != nil {
 		return poop.Chain(err)
 	}
 
@@ -74,24 +61,16 @@ func (c *Conn) AddOrUpdateContact(ctx context.Context, contact *Contact) error {
 	}
 }
 
+type GetContactsOptions struct {
+	Since time.Time
+}
+
 // GetContacts returns the list of contacts from the device.
 func (c *Conn) GetContacts(ctx context.Context, opts *GetContactsOptions) ([]*Contact, error) {
 	notifier := c.tx.Notifier()
 
 	if opts == nil {
 		opts = &GetContactsOptions{}
-	}
-
-	var buf bytes.Buffer
-
-	if _, err := buf.Write([]byte{byte(CommandGetContacts)}); err != nil {
-		return nil, poop.Chain(err)
-	}
-
-	if !opts.Since.IsZero() {
-		if err := binary.Write(&buf, binary.LittleEndian, uint32(opts.Since.Unix())); err != nil {
-			return nil, poop.Chain(err)
-		}
 	}
 
 	ch := make(chan []byte)
@@ -112,7 +91,7 @@ func (c *Conn) GetContacts(ctx context.Context, opts *GetContactsOptions) ([]*Co
 	})
 	defer unsubEndOfContacts()
 
-	if _, err := c.tx.Write(buf.Bytes()); err != nil {
+	if err := writeGetContactsCommand(c.tx, opts.Since); err != nil {
 		return nil, poop.Chain(err)
 	}
 
@@ -155,7 +134,7 @@ func (c *Conn) GetDeviceTime(ctx context.Context) (time.Time, error) {
 	})
 	defer unsubErr()
 
-	if _, err := c.tx.Write([]byte{byte(CommandGetDeviceTime)}); err != nil {
+	if err := writeCommandCode(c.tx, CommandGetDeviceTime); err != nil {
 		return time.Time{}, poop.Chain(err)
 	}
 
@@ -188,7 +167,7 @@ func (c *Conn) GetBatteryVoltage(ctx context.Context) (uint16, error) {
 	})
 	defer unsubErr()
 
-	if _, err := c.tx.Write([]byte{byte(CommandGetBatteryVoltage)}); err != nil {
+	if err := writeCommandCode(c.tx, CommandGetBatteryVoltage); err != nil {
 		return 0, poop.Chain(err)
 	}
 
@@ -226,35 +205,14 @@ func (c *Conn) SendTextMessage(
 	})
 	defer unsubErr()
 
-	var buf bytes.Buffer
-	var attempt byte
-	sendTime := uint32(time.Now().Unix())
-
-	if _, err := buf.Write([]byte{byte(CommandSendTxtMsg)}); err != nil {
-		return nil, poop.Chain(err)
-	}
-
-	if err := binary.Write(&buf, binary.LittleEndian, byte(textType)); err != nil {
-		return nil, poop.Chain(err)
-	}
-
-	if err := binary.Write(&buf, binary.LittleEndian, attempt); err != nil {
-		return nil, poop.Chain(err)
-	}
-
-	if err := binary.Write(&buf, binary.LittleEndian, sendTime); err != nil {
-		return nil, poop.Chain(err)
-	}
-
-	if _, err := buf.Write(recipient.Prefix(6)); err != nil {
-		return nil, poop.Chain(err)
-	}
-
-	if _, err := buf.Write([]byte(message)); err != nil {
-		return nil, poop.Chain(err)
-	}
-
-	if _, err := c.tx.Write(buf.Bytes()); err != nil {
+	if err := writeSendTextMessageCommand(
+		c.tx,
+		recipient,
+		message,
+		textType,
+		0, // attempt
+		time.Now(),
+	); err != nil {
 		return nil, poop.Chain(err)
 	}
 

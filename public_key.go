@@ -24,6 +24,13 @@ func (k *PublicKey) writeTo(w io.Writer) error {
 	return nil
 }
 
+func (k *PublicKey) writePrefixTo(w io.Writer, n int) error {
+	if _, err := w.Write(k.key[:n]); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
 func (k *PublicKey) Prefix(n int) []byte {
 	return k.key[:n]
 }
