@@ -18,7 +18,7 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	var sendMessage, getTelemetry, getChannels, deviceQuery bool
+	var sendMessage, getTelemetry, getChannels, deviceQuery, reboot bool
 	flag.BoolVar(
 		&sendMessage,
 		"send-message",
@@ -42,6 +42,12 @@ func run(ctx context.Context) error {
 		"device-query",
 		false,
 		"query the device information",
+	)
+	flag.BoolVar(
+		&reboot,
+		"reboot",
+		false,
+		"reboot the device",
 	)
 	flag.Parse()
 
@@ -112,6 +118,12 @@ func run(ctx context.Context) error {
 			return poop.Chain(err)
 		}
 		fmt.Printf("device info: %+v\n", deviceInfo)
+	}
+	if reboot {
+		if err := conn.Reboot(ctx); err != nil {
+			return poop.Chain(err)
+		}
+		fmt.Printf("rebooted device\n")
 	}
 
 	return nil

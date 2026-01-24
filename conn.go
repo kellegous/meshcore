@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"io"
 	"time"
 
@@ -426,4 +427,19 @@ func (c *Conn) DeviceQuery(ctx context.Context, appTargetVer byte) (*DeviceInfo,
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
+}
+
+// Reboot reboots the device.
+func (c *Conn) Reboot(ctx context.Context) error {
+	var rErr *ResponseError
+	if err := writeRebootCommand(c.tx); err != nil {
+		// Only return an error if we get a response error. In the
+		// common case, this will timeout on writing the command and
+		// we'll ignore the timeout error coming from the underlying
+		// transport.
+		if errors.As(err, &rErr) {
+			return poop.Chain(rErr)
+		}
+	}
+	return nil
 }

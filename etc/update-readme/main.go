@@ -140,6 +140,7 @@ var sections = Sections{
 			},
 			{
 				Title: "reboot",
+				Done:  true,
 			},
 			{
 				Title: "getBatteryVoltage",

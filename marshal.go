@@ -248,6 +248,13 @@ func readString(r io.Reader) (string, error) {
 	return string(b), nil
 }
 
+func writeString(w io.Writer, s string) error {
+	if _, err := w.Write([]byte(s)); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
 func readTime(r io.Reader) (time.Time, error) {
 	var ts uint32
 	if err := binary.Read(r, binary.LittleEndian, &ts); err != nil {
@@ -448,6 +455,21 @@ func writeDeviceQueryCommand(w io.Writer, appTargetVer byte) error {
 		return poop.Chain(err)
 	}
 	if err := binary.Write(&buf, binary.LittleEndian, appTargetVer); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
+func writeRebootCommand(w io.Writer) error {
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandReboot); err != nil {
+		return poop.Chain(err)
+	}
+	if err := writeString(&buf, "reboot"); err != nil {
 		return poop.Chain(err)
 	}
 
