@@ -18,7 +18,7 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	var sendMessage, getTelemetry, getChannels bool
+	var sendMessage, getTelemetry, getChannels, deviceQuery bool
 	flag.BoolVar(
 		&sendMessage,
 		"send-message",
@@ -36,6 +36,12 @@ func run(ctx context.Context) error {
 		"get-channels",
 		false,
 		"get the channels from the device",
+	)
+	flag.BoolVar(
+		&deviceQuery,
+		"device-query",
+		false,
+		"query the device information",
 	)
 	flag.Parse()
 
@@ -99,6 +105,13 @@ func run(ctx context.Context) error {
 		for _, channel := range channels {
 			fmt.Printf("channel: %+v\n", channel)
 		}
+	}
+	if deviceQuery {
+		deviceInfo, err := conn.DeviceQuery(ctx, 1)
+		if err != nil {
+			return poop.Chain(err)
+		}
+		fmt.Printf("device info: %+v\n", deviceInfo)
 	}
 
 	return nil

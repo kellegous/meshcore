@@ -394,3 +394,36 @@ func (c *Conn) DeleteChannel(ctx context.Context, idx uint8) error {
 		Secret: secret[:],
 	})
 }
+
+// DeviceQuery queries the device information.
+func (c *Conn) DeviceQuery(ctx context.Context, appTargetVer byte) (*DeviceInfo, error) {
+	notifier := c.tx.Notifier()
+
+	var deviceInfo DeviceInfo
+	var err error
+
+	ch := make(chan struct{})
+
+	unsubDeviceInfo := notifier.Subscribe(ResponseDeviceInfo, func(data []byte) {
+		err = deviceInfo.readFrom(bytes.NewReader(data))
+		close(ch)
+	})
+	defer unsubDeviceInfo()
+
+	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
+		err = readError(data)
+		close(ch)
+	})
+	defer unsubErr()
+
+	if err := writeDeviceQueryCommand(c.tx, appTargetVer); err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	select {
+	case <-ch:
+		return &deviceInfo, err
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}

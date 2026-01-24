@@ -238,3 +238,43 @@ func TestSetChannel(t *testing.T) {
 
 	controller.Wait()
 }
+
+func TestDeviceQuery(t *testing.T) {
+	expected := &DeviceInfo{
+		FirmwareVersion:   3,
+		FirmwareBuildDate: "2024-01-15",
+		ManufacturerModel: "lilygo-t-echo",
+	}
+
+	appTargetVer := byte(42)
+
+	controller := DoCommand(func(conn *Conn) {
+		deviceInfo, err := conn.DeviceQuery(t.Context(), appTargetVer)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(deviceInfo, expected) {
+			t.Fatalf("expected %s, got %s",
+				describe(expected),
+				describe(deviceInfo),
+			)
+		}
+	})
+
+	if err := ValidateBytes(
+		controller.Recv(),
+		Command(CommandDeviceQuery),
+		Byte(appTargetVer),
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	controller.Notify(ResponseDeviceInfo, BytesFrom(
+		Byte(byte(expected.FirmwareVersion)),
+		Bytes(0, 0, 0, 0, 0, 0), // reserved 6 bytes
+		CString(expected.FirmwareBuildDate, 12),
+		String(expected.ManufacturerModel),
+	))
+
+	controller.Wait()
+}

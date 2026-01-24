@@ -187,6 +187,32 @@ func (c *ChannelInfo) readFrom(r io.Reader) error {
 	return nil
 }
 
+type DeviceInfo struct {
+	FirmwareVersion   int8
+	FirmwareBuildDate string
+	ManufacturerModel string
+}
+
+func (d *DeviceInfo) readFrom(r io.Reader) error {
+	if err := binary.Read(r, binary.LittleEndian, &d.FirmwareVersion); err != nil {
+		return poop.Chain(err)
+	}
+	var reserved [6]byte
+	if _, err := io.ReadFull(r, reserved[:]); err != nil {
+		return poop.Chain(err)
+	}
+	var err error
+	d.FirmwareBuildDate, err = readCString(r, 12)
+	if err != nil {
+		return poop.Chain(err)
+	}
+	d.ManufacturerModel, err = readString(r)
+	if err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
 func readCString(r io.Reader, maxLen int) (string, error) {
 	buf := make([]byte, maxLen)
 	if _, err := io.ReadFull(r, buf[:]); err != nil {
@@ -212,6 +238,14 @@ func writeCString(w io.Writer, s string, maxLen int) error {
 		return poop.Chain(err)
 	}
 	return nil
+}
+
+func readString(r io.Reader) (string, error) {
+	b, err := io.ReadAll(r)
+	if err != nil {
+		return "", poop.Chain(err)
+	}
+	return string(b), nil
 }
 
 func readTime(r io.Reader) (time.Time, error) {
@@ -399,6 +433,21 @@ func writeSetChannelCommand(w io.Writer, channel *ChannelInfo) error {
 		return poop.Chain(err)
 	}
 	if _, err := buf.Write(channel.Secret); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
+func writeDeviceQueryCommand(w io.Writer, appTargetVer byte) error {
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandDeviceQuery); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Write(&buf, binary.LittleEndian, appTargetVer); err != nil {
 		return poop.Chain(err)
 	}
 

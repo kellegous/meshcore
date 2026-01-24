@@ -147,6 +147,7 @@ var sections = Sections{
 			},
 			{
 				Title: "deviceQuery",
+				Done:  true,
 			},
 			{
 				Title: "exportPrivateKey",
