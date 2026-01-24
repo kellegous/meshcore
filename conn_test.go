@@ -2,6 +2,7 @@ package meshcore
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"reflect"
 	"testing"
@@ -116,8 +117,12 @@ func TestGetContacts(t *testing.T) {
 			}
 		})
 
-		// TODO(kellegous): Validate the request
-		controller.Recv()
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandGetContacts),
+		); err != nil {
+			t.Fatal(err)
+		}
 
 		controller.Notify(ResponseContactsStart, nil)
 		for _, contact := range expected {
@@ -143,7 +148,13 @@ func TestGetContacts(t *testing.T) {
 			}
 		})
 
-		controller.Recv()
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandGetContacts),
+			Time(time.Unix(100, 0), binary.LittleEndian),
+		); err != nil {
+			t.Fatal(err)
+		}
 
 		controller.Notify(ResponseContactsStart, nil)
 		controller.Notify(ResponseEndOfContacts, nil)

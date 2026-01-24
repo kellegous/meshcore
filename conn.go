@@ -269,8 +269,6 @@ func (c *Conn) GetTelemetry(
 	// TODO(kellegous): Why is this a push event?
 	unsubTelemetry := notifier.Subscribe(PushTelemetryResponse, func(data []byte) {
 		err = telemetry.readFrom(bytes.NewReader(data))
-		// TODO(kellegous): Validate that the response is, in fact, for
-		// the given contact key.
 		close(ch)
 	})
 	defer unsubTelemetry()
@@ -287,6 +285,9 @@ func (c *Conn) GetTelemetry(
 
 	select {
 	case <-ch:
+		if !bytes.HasPrefix(key.key[:], telemetry.pubKeyPrefix[:]) {
+			return nil, poop.New("telemetry response is not for the given contact key")
+		}
 		return &telemetry, err
 	case <-ctx.Done():
 		return nil, ctx.Err()
