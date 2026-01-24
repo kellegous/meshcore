@@ -119,9 +119,11 @@ var sections = Sections{
 			},
 			{
 				Title: "importContact",
+				Done:  true,
 			},
 			{
 				Title: "exportContact",
+				Done:  true,
 			},
 			{
 				Title: "shareContact",

@@ -574,3 +574,35 @@ func writeSendAdvertCommand(w io.Writer, advertType SelfAdvertType) error {
 	}
 	return nil
 }
+
+func writeExportContactCommand(w io.Writer, key *PublicKey) error {
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandExportContact); err != nil {
+		return poop.Chain(err)
+	}
+	if key != nil {
+		if err := key.writeTo(&buf); err != nil {
+			return poop.Chain(err)
+		}
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
+func writeImportContactCommand(w io.Writer, advertPacket []byte) error {
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandImportContact); err != nil {
+		return poop.Chain(err)
+	}
+	if _, err := buf.Write(advertPacket); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}

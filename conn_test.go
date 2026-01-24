@@ -436,3 +436,58 @@ func TestSendAdvert(t *testing.T) {
 
 	// TODO(kellegous): test error cases
 }
+
+func TestExportContact(t *testing.T) {
+	expected := []byte{1, 2, 3, 4, 5, 6}
+
+	t.Run("self contact", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			advertPacket, err := conn.ExportContact(t.Context(), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(advertPacket, expected) {
+				t.Fatalf("expected %v, got %v", expected, advertPacket)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandExportContact),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(
+			ResponseExportContact,
+			BytesFrom(Bytes(expected...)))
+
+		controller.Wait()
+	})
+
+	t.Run("non-self contact", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			advertPacket, err := conn.ExportContact(t.Context(), fakePublicKey(42))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(advertPacket, expected) {
+				t.Fatalf("expected %v, got %v", expected, advertPacket)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandExportContact),
+			Bytes(fakePublicKey(42).Bytes()...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(
+			ResponseExportContact,
+			BytesFrom(Bytes(expected...)))
+
+		controller.Wait()
+	})
+}

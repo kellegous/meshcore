@@ -24,7 +24,8 @@ func run(ctx context.Context) error {
 		deviceQuery,
 		reboot,
 		syncNextMessage,
-		sendAdvert bool
+		sendAdvert,
+		exportContact bool
 
 	flag.BoolVar(
 		&sendMessage,
@@ -67,6 +68,12 @@ func run(ctx context.Context) error {
 		"send-advert",
 		false,
 		"send an advert to the device",
+	)
+	flag.BoolVar(
+		&exportContact,
+		"export-contact",
+		false,
+		"export a contact from the device",
 	)
 	flag.Parse()
 
@@ -157,6 +164,12 @@ func run(ctx context.Context) error {
 		}
 		fmt.Printf("sent advert\n")
 	}
-
+	if exportContact {
+		advertPacket, err := conn.ExportContact(ctx, nil)
+		if err != nil {
+			return poop.Chain(err)
+		}
+		fmt.Printf("advert packet: %+v (%d)\n", advertPacket, len(advertPacket))
+	}
 	return nil
 }

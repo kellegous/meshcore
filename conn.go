@@ -490,6 +490,7 @@ func (c *Conn) SyncNextMessage(ctx context.Context) (Message, error) {
 	}
 }
 
+// SendAdvert sends an advert to the device.
 func (c *Conn) SendAdvert(ctx context.Context, advertType SelfAdvertType) error {
 	notifier := c.tx.Notifier()
 
@@ -509,6 +510,73 @@ func (c *Conn) SendAdvert(ctx context.Context, advertType SelfAdvertType) error 
 	defer unsubErr()
 
 	if err := writeSendAdvertCommand(c.tx, advertType); err != nil {
+		return poop.Chain(err)
+	}
+
+	select {
+	case <-ch:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// ExportContact exports a contact from the device. if key is nil, the
+// device's self contact is exported.
+func (c *Conn) ExportContact(ctx context.Context, key *PublicKey) ([]byte, error) {
+	notifier := c.tx.Notifier()
+
+	var advertPacket []byte
+	var err error
+
+	ch := make(chan struct{})
+
+	unsubExportContact := notifier.Subscribe(ResponseExportContact, func(data []byte) {
+		// TODO(kellegous): not sure if a copy is needed here.
+		advertPacket = make([]byte, len(data))
+		copy(advertPacket, data)
+		close(ch)
+	})
+	defer unsubExportContact()
+
+	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
+		err = readError(data)
+		close(ch)
+	})
+	defer unsubErr()
+
+	if err := writeExportContactCommand(c.tx, key); err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	select {
+	case <-ch:
+		return advertPacket, err
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+// ImportContact imports a contact into the device.
+func (c *Conn) ImportContact(ctx context.Context, advertPacket []byte) error {
+	notifier := c.tx.Notifier()
+
+	var err error
+
+	ch := make(chan struct{})
+
+	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
+		close(ch)
+	})
+	defer unsubOk()
+
+	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
+		err = readError(data)
+		close(ch)
+	})
+	defer unsubErr()
+
+	if err := writeImportContactCommand(c.tx, advertPacket); err != nil {
 		return poop.Chain(err)
 	}
 
