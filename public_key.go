@@ -33,6 +33,10 @@ func (k *PublicKey) writePrefixTo(w io.Writer, n int) error {
 	return nil
 }
 
+func (k *PublicKey) Bytes() []byte {
+	return k.key[:]
+}
+
 func (k *PublicKey) Prefix(n int) []byte {
 	return k.key[:n]
 }

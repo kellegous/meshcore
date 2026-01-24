@@ -258,7 +258,7 @@ func (c *Conn) SendTextMessage(
 func (c *Conn) GetTelemetry(
 	ctx context.Context,
 	key *PublicKey,
-) (any, error) {
+) (*TelemetryResponse, error) {
 	notifier := c.tx.Notifier()
 
 	var telemetry TelemetryResponse

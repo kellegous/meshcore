@@ -162,3 +162,41 @@ func TestGetContacts(t *testing.T) {
 		controller.Wait()
 	})
 }
+
+func TestGetTelemetry(t *testing.T) {
+	key := fakePublicKey(42)
+	expected := &TelemetryResponse{
+		pubKeyPrefix:  [6]byte{42, 0, 0, 0, 0, 0},
+		LPPSensorData: []byte{1, 2, 3},
+	}
+
+	controller := DoCommand(func(conn *Conn) {
+		telemetry, err := conn.GetTelemetry(t.Context(), key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(telemetry, expected) {
+			t.Fatalf("expected %s, got %s",
+				describe(expected),
+				describe(telemetry),
+			)
+		}
+	})
+
+	if err := ValidateBytes(
+		controller.Recv(),
+		Command(CommandSendTelemetryReq),
+		Bytes(0, 0, 0),
+		Bytes(key.Bytes()...),
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	controller.Notify(PushTelemetryResponse, BytesFrom(
+		Byte(0),
+		Bytes(key.Prefix(6)...),
+		Bytes(1, 2, 3),
+	))
+
+	controller.Wait()
+}

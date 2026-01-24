@@ -94,6 +94,14 @@ func CString(s string, maxLen int) Pattern {
 	}
 }
 
+func BytesFrom(patterns ...Pattern) []byte {
+	var buf bytes.Buffer
+	for _, pattern := range patterns {
+		buf.Write(pattern.Data)
+	}
+	return buf.Bytes()
+}
+
 func ValidateBytes(
 	got []byte,
 	patterns ...Pattern,
