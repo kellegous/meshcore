@@ -11,37 +11,37 @@ type listener struct {
 
 type Notifier struct {
 	lock      sync.RWMutex
-	listeners map[byte][]*listener
+	listeners map[NotificationCode][]*listener
 }
 
 func NewNotifier() *Notifier {
 	return &Notifier{
-		listeners: make(map[byte][]*listener),
+		listeners: make(map[NotificationCode][]*listener),
 	}
 }
 
-func (n *Notifier) Subscribe(code EventCode, fn func(data []byte)) func() {
+func (n *Notifier) Subscribe(code NotificationCode, fn func(data []byte)) func() {
 	n.lock.Lock()
 	defer n.lock.Unlock()
 	lr := &listener{fn: fn}
-	n.listeners[code.event()] = append(n.listeners[code.event()], lr)
+	n.listeners[code] = append(n.listeners[code], lr)
 	return func() {
 		n.unsubscribe(code, lr)
 	}
 }
 
-func (n *Notifier) unsubscribe(code EventCode, lr *listener) {
+func (n *Notifier) unsubscribe(code NotificationCode, lr *listener) {
 	n.lock.Lock()
 	defer n.lock.Unlock()
-	n.listeners[code.event()] = slices.DeleteFunc(n.listeners[code.event()], func(l *listener) bool {
+	n.listeners[code] = slices.DeleteFunc(n.listeners[code], func(l *listener) bool {
 		return l == lr
 	})
 }
 
-func (n *Notifier) Notify(code EventCode, data []byte) {
+func (n *Notifier) Notify(code NotificationCode, data []byte) {
 	n.lock.RLock()
 	defer n.lock.RUnlock()
-	for _, l := range n.listeners[code.event()] {
+	for _, l := range n.listeners[code] {
 		l.fn(data)
 	}
 }

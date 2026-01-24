@@ -77,7 +77,30 @@ func (c *Client) DiscoverDevices(ctx context.Context) iter.Seq2[*bluetooth.ScanR
 	}
 }
 
-func (c *Client) Connect(ctx context.Context, address bluetooth.Address) (*meshcore.Conn, error) {
+type ConnectOptions struct {
+	onNotification func(code meshcore.NotificationCode, data []byte)
+}
+
+type ConnectOption func(*ConnectOptions)
+
+// WithNotificationCallback sets the callback for notifications that is mostly used
+// for debugging purposes.
+func WithNotificationCallback(fn func(code meshcore.NotificationCode, data []byte)) ConnectOption {
+	return func(opts *ConnectOptions) {
+		opts.onNotification = fn
+	}
+}
+
+func (c *Client) Connect(
+	ctx context.Context,
+	address bluetooth.Address,
+	opts ...ConnectOption,
+) (*meshcore.Conn, error) {
+	options := &ConnectOptions{}
+	for _, opt := range opts {
+		opt(options)
+	}
+
 	device, err := c.adapter.Connect(address, bluetooth.ConnectionParams{})
 	if err != nil {
 		return nil, poop.Chain(err)
@@ -108,7 +131,10 @@ func (c *Client) Connect(ctx context.Context, address bluetooth.Address) (*meshc
 	}
 
 	frDevice.EnableNotifications(func(data []byte) {
-		code := meshcore.ResponseCode(data[0])
+		code := meshcore.NotificationCode(data[0])
+		if nf := options.onNotification; nf != nil {
+			nf(code, data[1:])
+		}
 		transport.notifier.Notify(code, data[1:])
 	})
 

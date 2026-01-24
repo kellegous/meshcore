@@ -443,3 +443,49 @@ func (c *Conn) Reboot(ctx context.Context) error {
 	}
 	return nil
 }
+
+// SyncNextMessage synchronizes the next message from the device.
+func (c *Conn) SyncNextMessage(ctx context.Context) (Message, error) {
+	notifier := c.tx.Notifier()
+
+	var message Message
+	var err error
+
+	ch := make(chan struct{})
+
+	unsubContactMessage := notifier.Subscribe(ResponseContactMsgRecv, func(data []byte) {
+		var contactMessage ContactMessage
+		err = contactMessage.readFrom(bytes.NewReader(data))
+		if err == nil {
+			message = &contactMessage
+		}
+		close(ch)
+	})
+	defer unsubContactMessage()
+
+	unsubChannelMessage := notifier.Subscribe(ResponseChannelMsgRecv, func(data []byte) {
+		var channelMessage ChannelMessage
+		err = channelMessage.readFrom(bytes.NewReader(data))
+		if err == nil {
+			message = &channelMessage
+		}
+		close(ch)
+	})
+	defer unsubChannelMessage()
+
+	unsubNoMoreMessages := notifier.Subscribe(ResponseNoMoreMessages, func(data []byte) {
+		close(ch)
+	})
+	defer unsubNoMoreMessages()
+
+	if err := writeCommandCode(c.tx, CommandSyncNextMessage); err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	select {
+	case <-ch:
+		return message, err
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}

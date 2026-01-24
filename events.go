@@ -5,59 +5,81 @@ import (
 	"fmt"
 )
 
-type EventCode interface {
-	event() byte
-}
-
-type ResponseCode byte
-
-func (c ResponseCode) event() byte {
-	return byte(c)
-}
+type NotificationCode byte
 
 const (
-	ResponseOk             ResponseCode = 0
-	ResponseErr            ResponseCode = 1
-	ResponseContactsStart  ResponseCode = 2
-	ResponseContact        ResponseCode = 3
-	ResponseEndOfContacts  ResponseCode = 4
-	ResponseSelfInfo       ResponseCode = 5
-	ResponseSent           ResponseCode = 6
-	ResponseContactMsgRecv ResponseCode = 7
-	ResponseChannelMsgRecv ResponseCode = 8
-	ResponseCurrTime       ResponseCode = 9
-	ResponseNoMoreMessages ResponseCode = 10
-	ResponseExportContact  ResponseCode = 11
-	ResponseBatteryVoltage ResponseCode = 12
-	ResponseDeviceInfo     ResponseCode = 13
-	ResponsePrivateKey     ResponseCode = 14
-	ResponseDisabled       ResponseCode = 15
-	ResponseChannelInfo    ResponseCode = 18
-	ResponseSignStart      ResponseCode = 19
-	ResponseSignature      ResponseCode = 20
+	ResponseOk             NotificationCode = 0
+	ResponseErr            NotificationCode = 1
+	ResponseContactsStart  NotificationCode = 2
+	ResponseContact        NotificationCode = 3
+	ResponseEndOfContacts  NotificationCode = 4
+	ResponseSelfInfo       NotificationCode = 5
+	ResponseSent           NotificationCode = 6
+	ResponseContactMsgRecv NotificationCode = 7
+	ResponseChannelMsgRecv NotificationCode = 8
+	ResponseCurrTime       NotificationCode = 9
+	ResponseNoMoreMessages NotificationCode = 10
+	ResponseExportContact  NotificationCode = 11
+	ResponseBatteryVoltage NotificationCode = 12
+	ResponseDeviceInfo     NotificationCode = 13
+	ResponsePrivateKey     NotificationCode = 14
+	ResponseDisabled       NotificationCode = 15
+	ResponseChannelInfo    NotificationCode = 18
+	ResponseSignStart      NotificationCode = 19
+	ResponseSignature      NotificationCode = 20
+	PushAdvert             NotificationCode = 0x80 // when companion is set to auto add contacts
+	PushPathUpdated        NotificationCode = 0x81
+	PushSendConfirmed      NotificationCode = 0x82
+	PushMsgWaiting         NotificationCode = 0x83
+	PushRawData            NotificationCode = 0x84
+	PushLoginSuccess       NotificationCode = 0x85
+	PushLoginFail          NotificationCode = 0x86 // not usable yet
+	PushStatusResponse     NotificationCode = 0x87
+	PushLogRxData          NotificationCode = 0x88
+	PushTraceData          NotificationCode = 0x89
+	PushNewAdvert          NotificationCode = 0x8A // when companion is set to manually add contacts
+	PushTelemetryResponse  NotificationCode = 0x8B
+	PushBinaryResponse     NotificationCode = 0x8C
 )
 
-type PushCode byte
-
-func (c PushCode) event() byte {
-	return byte(c)
+var notificationCodeText = map[NotificationCode]string{
+	ResponseOk:             "Ok",
+	ResponseErr:            "Err",
+	ResponseContactsStart:  "ContactsStart",
+	ResponseContact:        "Contact",
+	ResponseEndOfContacts:  "EndOfContacts",
+	ResponseSelfInfo:       "SelfInfo",
+	ResponseSent:           "Sent",
+	ResponseContactMsgRecv: "ContactMsgRecv",
+	ResponseChannelMsgRecv: "ChannelMsgRecv",
+	ResponseCurrTime:       "CurrTime",
+	ResponseNoMoreMessages: "NoMoreMessages",
+	ResponseExportContact:  "ExportContact",
+	ResponseBatteryVoltage: "BatteryVoltage",
+	ResponseDeviceInfo:     "DeviceInfo",
+	ResponsePrivateKey:     "PrivateKey",
+	ResponseDisabled:       "Disabled",
+	ResponseChannelInfo:    "ChannelInfo",
+	ResponseSignStart:      "SignStart",
+	ResponseSignature:      "Signature",
+	PushAdvert:             "PushAdvert",
+	PushPathUpdated:        "PushPathUpdated",
+	PushSendConfirmed:      "PushSendConfirmed",
+	PushMsgWaiting:         "PushMsgWaiting",
+	PushRawData:            "PushRawData",
+	PushLoginSuccess:       "PushLoginSuccess",
+	PushLoginFail:          "PushLoginFail",
+	PushStatusResponse:     "PushStatusResponse",
+	PushLogRxData:          "PushLogRxData",
+	PushTraceData:          "PushTraceData",
+	PushNewAdvert:          "PushNewAdvert",
+	PushTelemetryResponse:  "PushTelemetryResponse",
+	PushBinaryResponse:     "PushBinaryResponse",
 }
 
-const (
-	PushAdvert            PushCode = 0x80 // when companion is set to auto add contacts
-	PushPathUpdated       PushCode = 0x81
-	PushSendConfirmed     PushCode = 0x82
-	PushMsgWaiting        PushCode = 0x83
-	PushRawData           PushCode = 0x84
-	PushLoginSuccess      PushCode = 0x85
-	PushLoginFail         PushCode = 0x86 // not usable yet
-	PushStatusResponse    PushCode = 0x87
-	PushLogRxData         PushCode = 0x88
-	PushTraceData         PushCode = 0x89
-	PushNewAdvert         PushCode = 0x8A // when companion is set to manually add contacts
-	PushTelemetryResponse PushCode = 0x8B
-	PushBinaryResponse    PushCode = 0x8C
-)
+func (c NotificationCode) String() string {
+	return notificationCodeText[c]
+}
 
 type ErrorCode byte
 

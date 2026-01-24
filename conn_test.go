@@ -51,7 +51,7 @@ type Controller struct {
 	tx *fakeTransport
 }
 
-func (c *Controller) Notify(code EventCode, data []byte) {
+func (c *Controller) Notify(code NotificationCode, data []byte) {
 	c.tx.notifier.Notify(code, data)
 }
 
@@ -277,4 +277,116 @@ func TestDeviceQuery(t *testing.T) {
 	))
 
 	controller.Wait()
+}
+
+func TestSyncNextMessage(t *testing.T) {
+	fromContact := &ContactMessage{
+		PubKeyPrefix: [6]byte{1, 2, 3, 4, 5, 6},
+		PathLen:      1,
+		TextType:     TextTypePlain,
+		SenderTime:   time.Unix(100, 0),
+		Text:         "hello",
+	}
+
+	fromChannel := &ChannelMessage{
+		ChannelIndex: 1,
+		PathLen:      1,
+		TextType:     TextTypePlain,
+		SenderTime:   time.Unix(100, 0),
+		Text:         "hello",
+	}
+
+	t.Run("from contact", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			message, err := conn.SyncNextMessage(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(message, fromContact) {
+				t.Fatalf("expected %s, got %s",
+					describe(fromContact),
+					describe(message),
+				)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSyncNextMessage),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(
+			ResponseContactMsgRecv,
+			BytesFrom(
+				Bytes(fromContact.PubKeyPrefix[:]...),
+				Byte(fromContact.PathLen),
+				Byte(byte(fromContact.TextType)),
+				Time(fromContact.SenderTime, binary.LittleEndian),
+				String(fromContact.Text),
+			))
+
+		controller.Wait()
+	})
+
+	t.Run("from channel", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			message, err := conn.SyncNextMessage(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !reflect.DeepEqual(message, fromChannel) {
+				t.Fatalf("expected %s, got %s",
+					describe(fromChannel),
+					describe(message),
+				)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSyncNextMessage),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(
+			ResponseChannelMsgRecv,
+			BytesFrom(
+				Byte(fromChannel.ChannelIndex),
+				Byte(fromChannel.PathLen),
+				Byte(byte(fromChannel.TextType)),
+				Time(fromChannel.SenderTime, binary.LittleEndian),
+				String(fromChannel.Text),
+			))
+
+		controller.Wait()
+	})
+
+	t.Run("no more messages", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			message, err := conn.SyncNextMessage(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if message != nil {
+				t.Fatalf("expected nil message, got %s",
+					describe(message),
+				)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSyncNextMessage),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseNoMoreMessages, nil)
+
+		controller.Wait()
+	})
 }

@@ -107,6 +107,7 @@ var sections = Sections{
 			},
 			{
 				Title: "syncNextMessage",
+				Done:  true,
 			},
 			{
 				Title: "getDeviceTime",

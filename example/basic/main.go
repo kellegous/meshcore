@@ -18,7 +18,7 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	var sendMessage, getTelemetry, getChannels, deviceQuery, reboot bool
+	var sendMessage, getTelemetry, getChannels, deviceQuery, reboot, syncNextMessage bool
 	flag.BoolVar(
 		&sendMessage,
 		"send-message",
@@ -48,6 +48,12 @@ func run(ctx context.Context) error {
 		"reboot",
 		false,
 		"reboot the device",
+	)
+	flag.BoolVar(
+		&syncNextMessage,
+		"sync-next-message",
+		false,
+		"synchronize the next message from the device",
 	)
 	flag.Parse()
 
@@ -124,6 +130,13 @@ func run(ctx context.Context) error {
 			return poop.Chain(err)
 		}
 		fmt.Printf("rebooted device\n")
+	}
+	if syncNextMessage {
+		message, err := conn.SyncNextMessage(ctx)
+		if err != nil {
+			return poop.Chain(err)
+		}
+		fmt.Printf("next message: %+v\n", message)
 	}
 
 	return nil

@@ -213,6 +213,87 @@ func (d *DeviceInfo) readFrom(r io.Reader) error {
 	return nil
 }
 
+type Message interface {
+	FromContact() *ContactMessage
+	FromChannel() *ChannelMessage
+}
+
+type ContactMessage struct {
+	PubKeyPrefix [6]byte
+	PathLen      byte
+	TextType     TextType
+	SenderTime   time.Time
+	Text         string
+}
+
+func (c *ContactMessage) FromContact() *ContactMessage {
+	return c
+}
+
+func (c *ContactMessage) FromChannel() *ChannelMessage {
+	return nil
+}
+
+func (c *ContactMessage) readFrom(r io.Reader) error {
+	if _, err := io.ReadFull(r, c.PubKeyPrefix[:]); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &c.PathLen); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &c.TextType); err != nil {
+		return poop.Chain(err)
+	}
+	var err error
+	c.SenderTime, err = readTime(r)
+	if err != nil {
+		return poop.Chain(err)
+	}
+	c.Text, err = readString(r)
+	if err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
+type ChannelMessage struct {
+	ChannelIndex byte
+	PathLen      byte
+	TextType     TextType
+	SenderTime   time.Time
+	Text         string
+}
+
+func (c *ChannelMessage) FromContact() *ContactMessage {
+	return nil
+}
+
+func (c *ChannelMessage) FromChannel() *ChannelMessage {
+	return c
+}
+
+func (c *ChannelMessage) readFrom(r io.Reader) error {
+	if err := binary.Read(r, binary.LittleEndian, &c.ChannelIndex); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &c.PathLen); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &c.TextType); err != nil {
+		return poop.Chain(err)
+	}
+	var err error
+	c.SenderTime, err = readTime(r)
+	if err != nil {
+		return poop.Chain(err)
+	}
+	c.Text, err = readString(r)
+	if err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
 func readCString(r io.Reader, maxLen int) (string, error) {
 	buf := make([]byte, maxLen)
 	if _, err := io.ReadFull(r, buf[:]); err != nil {
