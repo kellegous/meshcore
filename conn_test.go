@@ -389,4 +389,50 @@ func TestSyncNextMessage(t *testing.T) {
 
 		controller.Wait()
 	})
+
+	// TODO(kellegous): test error cases
+}
+
+func TestSendAdvert(t *testing.T) {
+	t.Run("zero hop", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.SendAdvert(t.Context(), SelfAdvertTypeZeroHop); err != nil {
+				t.Fatal(err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSendSelfAdvert),
+			Byte(byte(SelfAdvertTypeZeroHop)),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseOk, nil)
+
+		controller.Wait()
+	})
+
+	t.Run("flood", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.SendAdvert(t.Context(), SelfAdvertTypeFlood); err != nil {
+				t.Fatal(err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSendSelfAdvert),
+			Byte(byte(SelfAdvertTypeFlood)),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseOk, nil)
+
+		controller.Wait()
+	})
+
+	// TODO(kellegous): test error cases
 }

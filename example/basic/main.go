@@ -18,7 +18,14 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	var sendMessage, getTelemetry, getChannels, deviceQuery, reboot, syncNextMessage bool
+	var sendMessage,
+		getTelemetry,
+		getChannels,
+		deviceQuery,
+		reboot,
+		syncNextMessage,
+		sendAdvert bool
+
 	flag.BoolVar(
 		&sendMessage,
 		"send-message",
@@ -54,6 +61,12 @@ func run(ctx context.Context) error {
 		"sync-next-message",
 		false,
 		"synchronize the next message from the device",
+	)
+	flag.BoolVar(
+		&sendAdvert,
+		"send-advert",
+		false,
+		"send an advert to the device",
 	)
 	flag.Parse()
 
@@ -137,6 +150,12 @@ func run(ctx context.Context) error {
 			return poop.Chain(err)
 		}
 		fmt.Printf("next message: %+v\n", message)
+	}
+	if sendAdvert {
+		if err := conn.SendAdvert(ctx, meshcore.SelfAdvertTypeZeroHop); err != nil {
+			return poop.Chain(err)
+		}
+		fmt.Printf("sent advert\n")
 	}
 
 	return nil

@@ -81,6 +81,7 @@ var sections = Sections{
 		Task: []Task{
 			{
 				Title: "sendAdvert",
+				Done:  true,
 			},
 			{
 				Title: "setAdvertName",

@@ -489,3 +489,33 @@ func (c *Conn) SyncNextMessage(ctx context.Context) (Message, error) {
 		return nil, ctx.Err()
 	}
 }
+
+func (c *Conn) SendAdvert(ctx context.Context, advertType SelfAdvertType) error {
+	notifier := c.tx.Notifier()
+
+	var err error
+
+	ch := make(chan struct{})
+
+	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
+		close(ch)
+	})
+	defer unsubOk()
+
+	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
+		err = readError(data)
+		close(ch)
+	})
+	defer unsubErr()
+
+	if err := writeSendAdvertCommand(c.tx, advertType); err != nil {
+		return poop.Chain(err)
+	}
+
+	select {
+	case <-ch:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}

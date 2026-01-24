@@ -559,3 +559,18 @@ func writeRebootCommand(w io.Writer) error {
 	}
 	return nil
 }
+
+func writeSendAdvertCommand(w io.Writer, advertType SelfAdvertType) error {
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandSendSelfAdvert); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Write(&buf, binary.LittleEndian, byte(advertType)); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
