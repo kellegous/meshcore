@@ -68,10 +68,19 @@ const (
 	ErrorCodeIllegalArgument    ErrorCode = 6
 )
 
+var errorText = map[ErrorCode]string{
+	ErrorCodeUnknown:            "unknown error",
+	ErrorCodeUnsupportedCommand: "unsupported command",
+	ErrorCodeNotFound:           "not found",
+	ErrorCodeTableFull:          "table full",
+	ErrorCodeBadState:           "bad state",
+	ErrorCodeIllegalArgument:    "illegal argument",
+}
+
 type ResponseError struct {
 	Code ErrorCode
 }
 
 func (e *ResponseError) Error() string {
-	return fmt.Sprintf("response error: %d", e.Code)
+	return fmt.Sprintf("response error: %d (%s)", e.Code, errorText[e.Code])
 }

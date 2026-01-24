@@ -18,6 +18,19 @@ func main() {
 }
 
 func run(ctx context.Context) error {
+	var sendMessage, getTelemetry bool
+	flag.BoolVar(
+		&sendMessage,
+		"send-message",
+		false,
+		"send a message to the device",
+	)
+	flag.BoolVar(
+		&getTelemetry,
+		"get-telemetry",
+		false,
+		"get the telemetry from the device",
+	)
 	flag.Parse()
 
 	if flag.NArg() != 1 {
@@ -55,7 +68,7 @@ func run(ctx context.Context) error {
 	}
 	fmt.Printf("device time: %s\n", t)
 
-	if len(contacts) > 0 {
+	if sendMessage && len(contacts) > 0 {
 		contact := contacts[0]
 
 		sr, err := conn.SendTextMessage(ctx, &contact.PublicKey, "Hello, world!", meshcore.TextTypePlain)
@@ -63,6 +76,14 @@ func run(ctx context.Context) error {
 			return poop.Chain(err)
 		}
 		fmt.Printf("sent message: %+v\n", sr)
+	}
+	if getTelemetry && len(contacts) > 0 {
+		contact := contacts[0]
+		telemetry, err := conn.GetTelemetry(ctx, &contact.PublicKey)
+		if err != nil {
+			return poop.Chain(err)
+		}
+		fmt.Printf("telemetry: %+v\n", telemetry)
 	}
 
 	return nil

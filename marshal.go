@@ -327,9 +327,6 @@ func writeGetTelemetryCommand(w io.Writer, key *PublicKey) error {
 	if err := writeCommandCode(&buf, CommandSendTelemetryReq); err != nil {
 		return poop.Chain(err)
 	}
-	if err := key.writePrefixTo(&buf, 6); err != nil {
-		return poop.Chain(err)
-	}
 	// reserved bytes
 	if _, err := buf.Write([]byte{0, 0, 0}); err != nil {
 		return poop.Chain(err)

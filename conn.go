@@ -285,10 +285,15 @@ func (c *Conn) GetTelemetry(
 
 	select {
 	case <-ch:
-		if !bytes.HasPrefix(key.key[:], telemetry.pubKeyPrefix[:]) {
+		if err != nil {
+			return nil, poop.Chain(err)
+		}
+
+		if !bytes.Equal(key.Prefix(6), telemetry.pubKeyPrefix[:]) {
 			return nil, poop.New("telemetry response is not for the given contact key")
 		}
-		return &telemetry, err
+
+		return &telemetry, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
