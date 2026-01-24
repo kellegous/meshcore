@@ -69,6 +69,14 @@ func fakePublicKey(id byte) *PublicKey {
 	return &PublicKey{key: key}
 }
 
+func fakeBytes(n int, fn func(i int) byte) []byte {
+	bs := make([]byte, n)
+	for i := 0; i < n; i++ {
+		bs[i] = fn(i)
+	}
+	return bs
+}
+
 func describe(v any) string {
 	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
@@ -197,6 +205,36 @@ func TestGetTelemetry(t *testing.T) {
 		Bytes(key.Prefix(6)...),
 		Bytes(1, 2, 3),
 	))
+
+	controller.Wait()
+}
+
+func TestSetChannel(t *testing.T) {
+	channel := &ChannelInfo{
+		Index: 3,
+		Name:  "chan",
+		Secret: fakeBytes(16, func(i int) byte {
+			return byte(i + 1)
+		}),
+	}
+
+	controller := DoCommand(func(conn *Conn) {
+		if err := conn.SetChannel(t.Context(), channel); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	if err := ValidateBytes(
+		controller.Recv(),
+		Command(CommandSetChannel),
+		Byte(channel.Index),
+		CString(channel.Name, 32),
+		Bytes(channel.Secret...),
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	controller.Notify(ResponseOk, nil)
 
 	controller.Wait()
 }

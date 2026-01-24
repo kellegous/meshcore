@@ -173,9 +173,11 @@ var sections = Sections{
 			},
 			{
 				Title: "setChannel",
+				Done:  true,
 			},
 			{
 				Title: "deleteChannel",
+				Done:  true,
 			},
 			{
 				Title: "getChannels",

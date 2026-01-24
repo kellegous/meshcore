@@ -353,3 +353,44 @@ func (c *Conn) GetChannels(
 
 	return channels, nil
 }
+
+// SetChannel sets or updates a channel on the device.
+func (c *Conn) SetChannel(ctx context.Context, channel *ChannelInfo) error {
+	notifier := c.tx.Notifier()
+
+	var err error
+
+	ch := make(chan struct{})
+
+	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
+		close(ch)
+	})
+	defer unsubOk()
+
+	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
+		err = readError(data)
+		close(ch)
+	})
+	defer unsubErr()
+
+	if err := writeSetChannelCommand(c.tx, channel); err != nil {
+		return poop.Chain(err)
+	}
+
+	select {
+	case <-ch:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// DeleteChannel deletes a channel from the device.
+func (c *Conn) DeleteChannel(ctx context.Context, idx uint8) error {
+	var secret [16]byte
+	return c.SetChannel(ctx, &ChannelInfo{
+		Index:  idx,
+		Name:   "",
+		Secret: secret[:],
+	})
+}

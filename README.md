@@ -8,7 +8,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
 **In Progress**
 
 ```
-|████████████▏                                     | 24%
+|██████████████▊                                   | 29%
 ```
 
 ## TODO:
@@ -25,7 +25,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
  
    - [x] addOrUpdateContact
  
-   - [ ] deleteChannel
+   - [x] deleteChannel
  
    - [ ] deviceQuery
  
@@ -73,7 +73,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
  
    - [ ] setAdvertName
  
-   - [ ] setChannel
+   - [x] setChannel
  
    - [ ] setContactPath
  

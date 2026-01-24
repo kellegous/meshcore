@@ -382,3 +382,28 @@ func writeGetChannelCommand(w io.Writer, idx uint8) error {
 	}
 	return nil
 }
+
+func writeSetChannelCommand(w io.Writer, channel *ChannelInfo) error {
+	if len(channel.Secret) != 16 {
+		return poop.Newf("secret length must be 16")
+	}
+
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandSetChannel); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Write(&buf, binary.LittleEndian, channel.Index); err != nil {
+		return poop.Chain(err)
+	}
+	if err := writeCString(&buf, channel.Name, 32); err != nil {
+		return poop.Chain(err)
+	}
+	if _, err := buf.Write(channel.Secret); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
