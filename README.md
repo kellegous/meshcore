@@ -8,7 +8,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
 **In Progress**
 
 ```
-|█████████▍                                        | 18%
+|████████████▏                                     | 24%
 ```
 
 ## TODO:
@@ -35,9 +35,9 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
  
    - [x] getBatteryVoltage
  
-   - [ ] getChannel
+   - [x] getChannel
  
-   - [ ] getChannels
+   - [x] getChannels
  
    - [x] getContacts
  

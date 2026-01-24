@@ -160,6 +160,33 @@ func (t *TelemetryResponse) readFrom(r io.Reader) error {
 	return nil
 }
 
+type ChannelInfo struct {
+	Index  uint8
+	Name   string
+	Secret []byte
+}
+
+func (c *ChannelInfo) readFrom(r io.Reader) error {
+	if err := binary.Read(r, binary.LittleEndian, &c.Index); err != nil {
+		return poop.Chain(err)
+	}
+
+	var err error
+	c.Name, err = readCString(r, 32)
+	if err != nil {
+		return poop.Chain(err)
+	}
+
+	c.Secret, err = io.ReadAll(r)
+	if err != nil {
+		return poop.Chain(err)
+	} else if len(c.Secret) != 16 {
+		return poop.Newf("secret length is not 16")
+	}
+
+	return nil
+}
+
 func readCString(r io.Reader, maxLen int) (string, error) {
 	buf := make([]byte, maxLen)
 	if _, err := io.ReadFull(r, buf[:]); err != nil {
@@ -332,6 +359,21 @@ func writeGetTelemetryCommand(w io.Writer, key *PublicKey) error {
 		return poop.Chain(err)
 	}
 	if err := key.writeTo(&buf); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
+func writeGetChannelCommand(w io.Writer, idx uint8) error {
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandGetChannel); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Write(&buf, binary.LittleEndian, idx); err != nil {
 		return poop.Chain(err)
 	}
 

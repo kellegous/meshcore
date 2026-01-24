@@ -298,3 +298,58 @@ func (c *Conn) GetTelemetry(
 		return nil, ctx.Err()
 	}
 }
+
+// GetChannel returns the channel information for the given index.
+func (c *Conn) GetChannel(
+	ctx context.Context,
+	idx uint8,
+) (*ChannelInfo, error) {
+	notifier := c.tx.Notifier()
+
+	var channel ChannelInfo
+	var err error
+
+	ch := make(chan struct{})
+
+	unsubChannel := notifier.Subscribe(ResponseChannelInfo, func(data []byte) {
+		err = channel.readFrom(bytes.NewReader(data))
+		close(ch)
+	})
+	defer unsubChannel()
+
+	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
+		err = readError(data)
+		close(ch)
+	})
+	defer unsubErr()
+
+	if err := writeGetChannelCommand(c.tx, idx); err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	select {
+	case <-ch:
+		return &channel, err
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+// GetChannels returns the list of all channels.
+func (c *Conn) GetChannels(
+	ctx context.Context,
+) ([]*ChannelInfo, error) {
+	var channels []*ChannelInfo
+
+	for i := uint8(0); ; i++ {
+		channel, err := c.GetChannel(ctx, i)
+		if hasErrorCode(err, ErrorCodeNotFound) {
+			break
+		} else if err != nil {
+			return nil, poop.Chain(err)
+		}
+		channels = append(channels, channel)
+	}
+
+	return channels, nil
+}

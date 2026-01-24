@@ -1,6 +1,9 @@
 package meshcore
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type EventCode interface {
 	event() byte
@@ -83,4 +86,12 @@ type ResponseError struct {
 
 func (e *ResponseError) Error() string {
 	return fmt.Sprintf("response error: %d (%s)", e.Code, errorText[e.Code])
+}
+
+func hasErrorCode(err error, code ErrorCode) bool {
+	var resErr *ResponseError
+	if errors.As(err, &resErr) {
+		return resErr.Code == code
+	}
+	return false
 }

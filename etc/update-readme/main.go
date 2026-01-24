@@ -169,6 +169,7 @@ var sections = Sections{
 			},
 			{
 				Title: "getChannel",
+				Done:  true,
 			},
 			{
 				Title: "setChannel",
@@ -178,6 +179,7 @@ var sections = Sections{
 			},
 			{
 				Title: "getChannels",
+				Done:  true,
 			},
 			{
 				Title: "sign",
