@@ -48,3 +48,10 @@ const (
 	TextTypeCliData     TextType = 1
 	TextTypeSignedPlain TextType = 2
 )
+
+type SelfAdvertType byte
+
+const (
+	SelfAdvertTypeZeroHop SelfAdvertType = 0
+	SelfAdvertTypeFlood   SelfAdvertType = 1
+)
