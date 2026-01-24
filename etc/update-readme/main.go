@@ -162,6 +162,7 @@ var sections = Sections{
 			},
 			{
 				Title: "getTelemetry",
+				Done:  true,
 			},
 			{
 				Title: "sendBinaryRequest",
