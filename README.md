@@ -8,7 +8,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
 **In Progress**
 
 ```
-|████████████████████████▎                         | 48%
+|█████████████████████████▋                        | 51%
 ```
 
 ## TODO:
@@ -45,7 +45,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
  
    - [ ] getNeighbors
  
-   - [ ] getStatus
+   - [x] getStatus
  
    - [x] getTelemetry
  

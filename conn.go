@@ -626,3 +626,38 @@ func (c *Conn) ExportPrivateKey(ctx context.Context) ([]byte, error) {
 		return nil, ctx.Err()
 	}
 }
+
+func (c *Conn) GetStatus(ctx context.Context, key *PublicKey) (*StatusResponse, error) {
+	notifier := c.tx.Notifier()
+
+	var status StatusResponse
+	var err error
+
+	ch := make(chan struct{})
+
+	// TODO(kellegous): Why is this a push event?
+	// TODO(kellegous): We should reject responses where the key prefix
+	// doesn't match the given key.
+	unsubStatus := notifier.Subscribe(PushStatusResponse, func(data []byte) {
+		err = status.readFrom(bytes.NewReader(data))
+		close(ch)
+	})
+	defer unsubStatus()
+
+	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
+		err = readError(data)
+		close(ch)
+	})
+	defer unsubErr()
+
+	if err := writeGetStatusCommand(c.tx, key); err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	select {
+	case <-ch:
+		return &status, err
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}

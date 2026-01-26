@@ -542,3 +542,39 @@ func TestExportPrivateKey(t *testing.T) {
 		controller.Wait()
 	})
 }
+
+func TestGetStatus(t *testing.T) {
+	key := fakePublicKey(42)
+	expected := &StatusResponse{
+		PubKeyPrefix: [6]byte{42, 0, 0, 0, 0, 0},
+		StatusData:   []byte{1, 2, 3},
+	}
+
+	t.Run("success", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			status, err := conn.GetStatus(t.Context(), key)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(status, expected) {
+				t.Fatalf("expected %s, got %s", describe(expected), describe(status))
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSendStatusReq),
+			Bytes(key.Bytes()...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(PushStatusResponse, BytesFrom(
+			Byte(0),
+			Bytes(key.Prefix(6)...),
+			Bytes(1, 2, 3),
+		))
+
+		controller.Wait()
+	})
+}

@@ -294,6 +294,30 @@ func (c *ChannelMessage) readFrom(r io.Reader) error {
 	return nil
 }
 
+type StatusResponse struct {
+	PubKeyPrefix [6]byte
+	StatusData   []byte
+}
+
+func (s *StatusResponse) readFrom(r io.Reader) error {
+	var reserved byte
+	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := io.ReadFull(r, s.PubKeyPrefix[:]); err != nil {
+		return poop.Chain(err)
+	}
+
+	var err error
+	s.StatusData, err = io.ReadAll(r)
+	if err != nil {
+		return poop.Chain(err)
+	}
+
+	return nil
+}
+
 func readCString(r io.Reader, maxLen int) (string, error) {
 	buf := make([]byte, maxLen)
 	if _, err := io.ReadFull(r, buf[:]); err != nil {
@@ -598,6 +622,21 @@ func writeImportContactCommand(w io.Writer, advertPacket []byte) error {
 		return poop.Chain(err)
 	}
 	if _, err := buf.Write(advertPacket); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
+func writeGetStatusCommand(w io.Writer, key *PublicKey) error {
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandSendStatusReq); err != nil {
+		return poop.Chain(err)
+	}
+	if err := key.writeTo(&buf); err != nil {
 		return poop.Chain(err)
 	}
 

@@ -166,6 +166,7 @@ var sections = Sections{
 			},
 			{
 				Title: "getStatus",
+				Done:  true,
 			},
 			{
 				Title: "getTelemetry",
