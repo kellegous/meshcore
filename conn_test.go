@@ -491,3 +491,54 @@ func TestExportContact(t *testing.T) {
 		controller.Wait()
 	})
 }
+
+func TestExportPrivateKey(t *testing.T) {
+	expected := fakeBytes(64, func(i int) byte {
+		return byte(i + 1)
+	})
+
+	t.Run("enabled", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			privateKey, err := conn.ExportPrivateKey(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(privateKey, expected) {
+				t.Fatalf("expected %v, got %v", expected, privateKey)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandExportPrivateKey),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(
+			ResponsePrivateKey,
+			BytesFrom(Bytes(expected...)))
+
+		controller.Wait()
+	})
+
+	t.Run("disabled", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			_, err := conn.ExportPrivateKey(t.Context())
+			if err == nil || err.Error() != "private key is disabled" {
+				t.Fatalf("expected error: private key is disabled, got %v", err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandExportPrivateKey),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseDisabled, nil)
+
+		controller.Wait()
+	})
+}

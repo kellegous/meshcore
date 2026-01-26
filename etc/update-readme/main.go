@@ -156,6 +156,7 @@ var sections = Sections{
 			},
 			{
 				Title: "exportPrivateKey",
+				Done:  true,
 			},
 			{
 				Title: "importPrivateKey",

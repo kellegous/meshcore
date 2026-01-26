@@ -8,7 +8,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
 **In Progress**
 
 ```
-|██████████████████████▉                           | 45%
+|████████████████████████▎                         | 48%
 ```
 
 ## TODO:
@@ -31,7 +31,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
  
    - [x] exportContact
  
-   - [ ] exportPrivateKey
+   - [x] exportPrivateKey
  
    - [x] getBatteryVoltage
  
