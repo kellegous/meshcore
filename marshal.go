@@ -645,3 +645,18 @@ func writeGetStatusCommand(w io.Writer, key *PublicKey) error {
 	}
 	return nil
 }
+
+func writeImportPrivateKeyCommand(w io.Writer, privateKey []byte) error {
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandImportPrivateKey); err != nil {
+		return poop.Chain(err)
+	}
+	if _, err := buf.Write(privateKey); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}

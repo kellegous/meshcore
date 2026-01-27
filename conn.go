@@ -627,6 +627,43 @@ func (c *Conn) ExportPrivateKey(ctx context.Context) ([]byte, error) {
 	}
 }
 
+// ImportPrivateKey imports a private key into the device.
+func (c *Conn) ImportPrivateKey(ctx context.Context, privateKey []byte) error {
+	notifier := c.tx.Notifier()
+
+	var err error
+
+	ch := make(chan struct{})
+
+	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
+		close(ch)
+	})
+	defer unsubOk()
+
+	unsubDisabled := notifier.Subscribe(ResponseDisabled, func(data []byte) {
+		err = poop.New("private key is disabled")
+		close(ch)
+	})
+	defer unsubDisabled()
+
+	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
+		err = readError(data)
+		close(ch)
+	})
+	defer unsubErr()
+
+	if err := writeImportPrivateKeyCommand(c.tx, privateKey); err != nil {
+		return poop.Chain(err)
+	}
+
+	select {
+	case <-ch:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 func (c *Conn) GetStatus(ctx context.Context, key *PublicKey) (*StatusResponse, error) {
 	notifier := c.tx.Notifier()
 

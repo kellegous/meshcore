@@ -160,6 +160,7 @@ var sections = Sections{
 			},
 			{
 				Title: "importPrivateKey",
+				Done:  true,
 			},
 			{
 				Title: "login",

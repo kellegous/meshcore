@@ -543,6 +543,52 @@ func TestExportPrivateKey(t *testing.T) {
 	})
 }
 
+func TestImportPrivateKey(t *testing.T) {
+	expected := fakeBytes(64, func(i int) byte {
+		return byte(i + 1)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.ImportPrivateKey(t.Context(), expected); err != nil {
+				t.Fatal(err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandImportPrivateKey),
+			Bytes(expected...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseOk, nil)
+
+		controller.Wait()
+	})
+
+	t.Run("disabled", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.ImportPrivateKey(t.Context(), expected); err == nil || err.Error() != "private key is disabled" {
+				t.Fatalf("expected error: private key is disabled, got %v", err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandImportPrivateKey),
+			Bytes(expected...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseDisabled, nil)
+
+		controller.Wait()
+	})
+}
+
 func TestGetStatus(t *testing.T) {
 	key := fakePublicKey(42)
 	expected := &StatusResponse{
