@@ -8,7 +8,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
 **In Progress**
 
 ```
-|█████████████████████████▋                        | 51%
+|███████████████████████████                       | 54%
 ```
 
 ## TODO:
@@ -51,7 +51,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
  
    - [x] importContact
  
-   - [ ] importPrivateKey
+   - [x] importPrivateKey
  
    - [ ] login
  
