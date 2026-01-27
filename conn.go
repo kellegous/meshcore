@@ -664,6 +664,8 @@ func (c *Conn) ImportPrivateKey(ctx context.Context, privateKey []byte) error {
 	}
 }
 
+// TODO(kellegous): This is not working on real devices currently. We seed the
+// SentResponse arrive, but we never get a PushStatusResponse.
 func (c *Conn) GetStatus(ctx context.Context, key *PublicKey) (*StatusResponse, error) {
 	notifier := c.tx.Notifier()
 

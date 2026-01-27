@@ -25,7 +25,8 @@ func run(ctx context.Context) error {
 		reboot,
 		syncNextMessage,
 		sendAdvert,
-		exportContact bool
+		exportContact,
+		getStatus bool
 
 	flag.BoolVar(
 		&sendMessage,
@@ -75,6 +76,12 @@ func run(ctx context.Context) error {
 		false,
 		"export a contact from the device",
 	)
+	flag.BoolVar(
+		&getStatus,
+		"get-status",
+		false,
+		"get the status from the device",
+	)
 	flag.Parse()
 
 	if flag.NArg() != 1 {
@@ -91,7 +98,13 @@ func run(ctx context.Context) error {
 		return poop.Chain(err)
 	}
 
-	conn, err := client.Connect(ctx, device.Address)
+	conn, err := client.Connect(
+		ctx,
+		device.Address,
+		meshcore_bluetooth.WithNotificationCallback(func(code meshcore.NotificationCode, data []byte) {
+			fmt.Printf("notification: %s (%d)\n", code, len(data))
+		}),
+	)
 	if err != nil {
 		return poop.Chain(err)
 	}
@@ -170,6 +183,17 @@ func run(ctx context.Context) error {
 			return poop.Chain(err)
 		}
 		fmt.Printf("advert packet: %+v (%d)\n", advertPacket, len(advertPacket))
+	}
+	if getStatus {
+		if len(contacts) == 0 {
+			return poop.New("no contacts found")
+		}
+		contact := contacts[0]
+		status, err := conn.GetStatus(ctx, &contact.PublicKey)
+		if err != nil {
+			return poop.Chain(err)
+		}
+		fmt.Printf("status: %+v\n", status)
 	}
 	return nil
 }

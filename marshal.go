@@ -318,6 +318,27 @@ func (s *StatusResponse) readFrom(r io.Reader) error {
 	return nil
 }
 
+type SendResponse struct {
+	Type           int8   // 1 = flood, 0 = direct
+	ExpectedAckCRC uint32 // can also serve as a tag
+	EstTimeout     time.Duration
+}
+
+func (s *SendResponse) readFrom(r io.Reader) error {
+	if err := binary.Read(r, binary.LittleEndian, &s.Type); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &s.ExpectedAckCRC); err != nil {
+		return poop.Chain(err)
+	}
+	var timeout uint32
+	if err := binary.Read(r, binary.LittleEndian, &timeout); err != nil {
+		return poop.Chain(err)
+	}
+	s.EstTimeout = time.Duration(timeout) * time.Millisecond
+	return nil
+}
+
 func readCString(r io.Reader, maxLen int) (string, error) {
 	buf := make([]byte, maxLen)
 	if _, err := io.ReadFull(r, buf[:]); err != nil {
