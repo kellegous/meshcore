@@ -99,6 +99,7 @@ var errorText = map[ErrorCode]string{
 	ErrorCodeNotFound:           "not found",
 	ErrorCodeTableFull:          "table full",
 	ErrorCodeBadState:           "bad state",
+	ErrorCodeFileIOError:        "file io error",
 	ErrorCodeIllegalArgument:    "illegal argument",
 }
 

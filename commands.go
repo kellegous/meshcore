@@ -5,7 +5,7 @@ type CommandCode byte
 const (
 	CommandAppStart          CommandCode = 1
 	CommandSendTxtMsg        CommandCode = 2
-	SendChannelTxtMsg        CommandCode = 3
+	CommandSendChannelTxtMsg CommandCode = 3
 	CommandGetContacts       CommandCode = 4
 	CommandGetDeviceTime     CommandCode = 5
 	CommandSetDeviceTime     CommandCode = 6

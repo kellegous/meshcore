@@ -501,6 +501,36 @@ func writeSendTextMessageCommand(
 	return nil
 }
 
+func writeSendChannelTextMessageCommand(
+	w io.Writer,
+	channelIndex byte,
+	message string,
+	textType TextType,
+	sendTime time.Time,
+) error {
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandSendChannelTxtMsg); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Write(&buf, binary.LittleEndian, byte(textType)); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Write(&buf, binary.LittleEndian, channelIndex); err != nil {
+		return poop.Chain(err)
+	}
+	if err := writeTime(&buf, sendTime); err != nil {
+		return poop.Chain(err)
+	}
+	if err := writeString(&buf, message); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
 func writeRemoveContactCommand(w io.Writer, key *PublicKey) error {
 	var buf bytes.Buffer
 	if err := writeCommandCode(&buf, CommandRemoveContact); err != nil {

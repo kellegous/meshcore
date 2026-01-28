@@ -256,6 +256,49 @@ func (c *Conn) SendTextMessage(
 	}
 }
 
+// SendChannelTextMessage sends a text message to the given channel.
+func (c *Conn) SendChannelTextMessage(
+	ctx context.Context,
+	channelIndex byte,
+	message string,
+	textType TextType,
+) error {
+	notifier := c.tx.Notifier()
+
+	var err error
+
+	ch := make(chan struct{})
+
+	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
+		close(ch)
+	})
+	defer unsubOk()
+
+	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
+		err = readError(data)
+		close(ch)
+	})
+	defer unsubErr()
+
+	if err := writeSendChannelTextMessageCommand(
+		c.tx,
+		channelIndex,
+		message,
+		textType,
+		time.Now(),
+	); err != nil {
+		return poop.Chain(err)
+	}
+
+	select {
+	case <-ch:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// GetTelemetry returns the telemetry data for the given contact key.
 func (c *Conn) GetTelemetry(
 	ctx context.Context,
 	key *PublicKey,

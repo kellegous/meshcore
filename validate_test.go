@@ -11,35 +11,40 @@ import (
 )
 
 type Pattern struct {
-	Data []byte
-	Desc string
+	Data    []byte
+	Desc    string
+	Compare func(got []byte, expected []byte) bool
 }
 
 func Byte(b byte) Pattern {
 	return Pattern{
-		Data: []byte{b},
-		Desc: fmt.Sprintf("byte(%d)", b),
+		Data:    []byte{b},
+		Desc:    fmt.Sprintf("byte(%d)", b),
+		Compare: bytes.Equal,
 	}
 }
 
 func Command(c CommandCode) Pattern {
 	return Pattern{
-		Data: []byte{byte(c)},
-		Desc: fmt.Sprintf("command(%d)", c),
+		Data:    []byte{byte(c)},
+		Desc:    fmt.Sprintf("command(%d)", c),
+		Compare: bytes.Equal,
 	}
 }
 
 func Bytes(bs ...byte) Pattern {
 	return Pattern{
-		Data: bs,
-		Desc: fmt.Sprintf("bytes(%v)", bs),
+		Data:    bs,
+		Desc:    fmt.Sprintf("bytes(%v)", bs),
+		Compare: bytes.Equal,
 	}
 }
 
 func String(s string) Pattern {
 	return Pattern{
-		Data: []byte(s),
-		Desc: fmt.Sprintf("string(%q)", s),
+		Data:    []byte(s),
+		Desc:    fmt.Sprintf("string(%q)", s),
+		Compare: bytes.Equal,
 	}
 }
 
@@ -47,8 +52,9 @@ func Int32(i int32, e binary.ByteOrder) Pattern {
 	buf := make([]byte, 4)
 	e.PutUint32(buf, uint32(i))
 	return Pattern{
-		Data: buf,
-		Desc: fmt.Sprintf("int32(%d, %s)", i, e.String()),
+		Data:    buf,
+		Desc:    fmt.Sprintf("int32(%d, %s)", i, e.String()),
+		Compare: bytes.Equal,
 	}
 }
 
@@ -56,8 +62,9 @@ func Uint32(i uint32, e binary.ByteOrder) Pattern {
 	buf := make([]byte, 4)
 	e.PutUint32(buf, i)
 	return Pattern{
-		Data: buf,
-		Desc: fmt.Sprintf("uint32(%d, %s)", i, e.String()),
+		Data:    buf,
+		Desc:    fmt.Sprintf("uint32(%d, %s)", i, e.String()),
+		Compare: bytes.Equal,
 	}
 }
 
@@ -65,8 +72,9 @@ func Time(t time.Time, e binary.ByteOrder) Pattern {
 	buf := make([]byte, 4)
 	e.PutUint32(buf, uint32(t.Unix()))
 	return Pattern{
-		Data: buf,
-		Desc: fmt.Sprintf("time(%s, %s)", t.Format(time.RFC3339), e.String()),
+		Data:    buf,
+		Desc:    fmt.Sprintf("time(%s, %s)", t.Format(time.RFC3339), e.String()),
+		Compare: bytes.Equal,
 	}
 }
 
@@ -75,8 +83,19 @@ func LatLon(lat float64, lon float64, e binary.ByteOrder) Pattern {
 	binary.BigEndian.PutUint32(buf, uint32(lat*1e6))
 	binary.BigEndian.PutUint32(buf[4:], uint32(lon*1e6))
 	return Pattern{
-		Data: buf,
-		Desc: fmt.Sprintf("latlon(%f, %f, %s)", lat, lon, e.String()),
+		Data:    buf,
+		Desc:    fmt.Sprintf("latlon(%f, %f, %s)", lat, lon, e.String()),
+		Compare: bytes.Equal,
+	}
+}
+
+func AnyBytes(n int) Pattern {
+	return Pattern{
+		Data: make([]byte, n),
+		Desc: fmt.Sprintf("any bytes(%d)", n),
+		Compare: func(got []byte, expected []byte) bool {
+			return len(got) == n
+		},
 	}
 }
 
@@ -89,8 +108,9 @@ func CString(s string, maxLen int) Pattern {
 	copy(buf, s)
 	buf[len(s)] = 0
 	return Pattern{
-		Data: buf,
-		Desc: fmt.Sprintf("cstring(%q, %d)", s, maxLen),
+		Data:    buf,
+		Desc:    fmt.Sprintf("cstring(%q, %d)", s, maxLen),
+		Compare: bytes.Equal,
 	}
 }
 
@@ -117,7 +137,7 @@ func ValidateBytes(
 			return poop.New(strings.Join(log, ", "))
 		}
 
-		if !bytes.HasPrefix(got, pattern.Data) {
+		if !pattern.Compare(got[:n], pattern.Data) {
 			log = append(
 				log,
 				fmt.Sprintf("%d:%s 👎", i, pattern.Desc),
@@ -129,6 +149,7 @@ func ValidateBytes(
 			log,
 			fmt.Sprintf("%d:%s 👍", i, pattern.Desc),
 		)
+
 		got = got[n:]
 	}
 

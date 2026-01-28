@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -620,6 +621,70 @@ func TestGetStatus(t *testing.T) {
 			Bytes(key.Prefix(6)...),
 			Bytes(1, 2, 3),
 		))
+
+		controller.Wait()
+	})
+}
+
+func TestSendChannelTextMessage(t *testing.T) {
+	channelIndex := byte(3)
+	message := "hello"
+	textType := TextTypePlain
+
+	t.Run("success", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.SendChannelTextMessage(
+				t.Context(),
+				channelIndex,
+				message,
+				textType,
+			); err != nil {
+				fmt.Println(err)
+				t.Fatal(err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSendChannelTxtMsg),
+			Byte(byte(textType)),
+			Byte(channelIndex),
+			AnyBytes(4),
+			String(message),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseOk, nil)
+
+		controller.Wait()
+	})
+
+	t.Run("error", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.SendChannelTextMessage(
+				t.Context(),
+				channelIndex,
+				message,
+				textType,
+			); err == nil || err.Error() != "response error: 5 (file io error)" {
+				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSendChannelTxtMsg),
+			Byte(byte(textType)),
+			Byte(channelIndex),
+			AnyBytes(4),
+			String(message),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseErr,
+			BytesFrom(Byte(byte(ErrorCodeFileIOError))))
 
 		controller.Wait()
 	})
