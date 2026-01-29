@@ -143,9 +143,11 @@ var sections = Sections{
 			},
 			{
 				Title: "setContactPath",
+				Done:  true, // utility method, may not be needed.
 			},
 			{
 				Title: "resetPath",
+				Done:  true,
 			},
 			{
 				Title: "reboot",

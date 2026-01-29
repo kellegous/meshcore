@@ -8,7 +8,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
 **In Progress**
 
 ```
-|█████████████████████████████████▊                | 67%
+|████████████████████████████████████▍             | 72%
 ```
 
 ## TODO:
@@ -59,7 +59,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
  
    - [x] removeContact
  
-   - [ ] resetPath
+   - [x] resetPath
  
    - [x] sendAdvert
  
@@ -75,7 +75,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
  
    - [x] setChannel
  
-   - [ ] setContactPath
+   - [x] setContactPath
  
    - [x] setDeviceTime
  
