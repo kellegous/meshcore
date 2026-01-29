@@ -85,6 +85,7 @@ var sections = Sections{
 			},
 			{
 				Title: "setAdvertName",
+				Done:  true,
 			},
 			{
 				Title: "setAdvertLatLong",

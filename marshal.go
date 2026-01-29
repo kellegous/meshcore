@@ -726,3 +726,18 @@ func writeSetAdvertLatLonCommand(w io.Writer, lat, lon float64) error {
 	}
 	return nil
 }
+
+func writeSetAdvertNameCommand(w io.Writer, name string) error {
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandSetAdvertName); err != nil {
+		return poop.Chain(err)
+	}
+	if err := writeString(&buf, name); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}

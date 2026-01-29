@@ -774,3 +774,34 @@ func (c *Conn) SetAdvertLatLon(ctx context.Context, lat float64, lon float64) er
 		return ctx.Err()
 	}
 }
+
+// SetAdvertName sets the advert name.
+func (c *Conn) SetAdvertName(ctx context.Context, name string) error {
+	notifier := c.tx.Notifier()
+
+	var err error
+
+	ch := make(chan struct{})
+
+	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
+		close(ch)
+	})
+	defer unsubOk()
+
+	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
+		err = readError(data)
+		close(ch)
+	})
+	defer unsubErr()
+
+	if err := writeSetAdvertNameCommand(c.tx, name); err != nil {
+		return poop.Chain(err)
+	}
+
+	select {
+	case <-ch:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
