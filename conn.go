@@ -805,3 +805,33 @@ func (c *Conn) SetAdvertName(ctx context.Context, name string) error {
 		return ctx.Err()
 	}
 }
+
+func (c *Conn) SetDeviceTime(ctx context.Context, time time.Time) error {
+	notifier := c.tx.Notifier()
+
+	var err error
+
+	ch := make(chan struct{})
+
+	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
+		close(ch)
+	})
+	defer unsubOk()
+
+	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
+		err = readError(data)
+		close(ch)
+	})
+	defer unsubErr()
+
+	if err := writeSetDeviceTimeCommand(c.tx, time); err != nil {
+		return poop.Chain(err)
+	}
+
+	select {
+	case <-ch:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}

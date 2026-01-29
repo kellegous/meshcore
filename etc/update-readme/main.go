@@ -119,6 +119,7 @@ var sections = Sections{
 			},
 			{
 				Title: "setDeviceTime",
+				Done:  true,
 			},
 			{
 				Title: "importContact",

@@ -778,3 +778,48 @@ func TestSetAdvertName(t *testing.T) {
 		controller.Wait()
 	})
 }
+
+func TestSetDeviceTime(t *testing.T) {
+	time := time.Unix(100, 0)
+
+	t.Run("success", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.SetDeviceTime(t.Context(), time); err != nil {
+				t.Fatal(err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSetDeviceTime),
+			Time(time, binary.LittleEndian),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseOk, nil)
+
+		controller.Wait()
+	})
+
+	t.Run("error", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.SetDeviceTime(t.Context(), time); err == nil || err.Error() != "response error: 5 (file io error)" {
+				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSetDeviceTime),
+			Time(time, binary.LittleEndian),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseErr,
+			BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+
+		controller.Wait()
+	})
+}
