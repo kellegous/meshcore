@@ -105,6 +105,7 @@ var sections = Sections{
 			},
 			{
 				Title: "sendChannelTextMessage",
+				Done:  true,
 			},
 			{
 				Title: "syncNextMessage",
