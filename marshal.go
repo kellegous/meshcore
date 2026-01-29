@@ -339,6 +339,32 @@ func (s *SendResponse) readFrom(r io.Reader) error {
 	return nil
 }
 
+type SignStartResponse struct {
+	MaxSignDataLen uint32
+}
+
+func (s *SignStartResponse) readFrom(r io.Reader) error {
+	var reserved byte
+	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &s.MaxSignDataLen); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
+type SignatureResponse struct {
+	Signature [64]byte
+}
+
+func (s *SignatureResponse) readFrom(r io.Reader) error {
+	if _, err := io.ReadFull(r, s.Signature[:]); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
 func readCString(r io.Reader, maxLen int) (string, error) {
 	buf := make([]byte, maxLen)
 	if _, err := io.ReadFull(r, buf[:]); err != nil {
@@ -778,6 +804,21 @@ func writeResetPathCommand(w io.Writer, key *PublicKey) error {
 		return poop.Chain(err)
 	}
 	if err := key.writeTo(&buf); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
+func writeSignDataCommand(w io.Writer, data []byte) error {
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandSignData); err != nil {
+		return poop.Chain(err)
+	}
+	if _, err := buf.Write(data); err != nil {
 		return poop.Chain(err)
 	}
 

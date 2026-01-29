@@ -898,3 +898,93 @@ func (c *Conn) ResetPath(ctx context.Context, key *PublicKey) error {
 		return ctx.Err()
 	}
 }
+
+// Sign signs the given data.
+func (c *Conn) Sign(ctx context.Context, data []byte) ([]byte, error) {
+	// TODO(kellegous): this needs to be tested.
+	notifier := c.tx.Notifier()
+
+	const chunkSize = 128
+	buf := bytes.NewReader(data)
+
+	var err error
+	var signature []byte
+	ch := make(chan struct{})
+
+	sendNextChunk := func() error {
+		var chunk [128]byte
+		if _, err := io.ReadFull(buf, chunk[:]); err != nil && err != io.ErrUnexpectedEOF {
+			return poop.Chain(err)
+		}
+
+		if err := writeSignDataCommand(c.tx, chunk[:]); err != nil {
+			return poop.Chain(err)
+		}
+
+		return nil
+	}
+
+	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
+		if buf.Len() > 0 {
+			err = sendNextChunk()
+			if err != nil {
+				close(ch)
+			}
+		} else {
+			err = writeCommandCode(c.tx, CommandSignFinish)
+		}
+	})
+	defer unsubOk()
+
+	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
+		err = readError(data)
+		close(ch)
+	})
+	defer unsubErr()
+
+	unsubSignStart := notifier.Subscribe(ResponseSignStart, func(data []byte) {
+		// TODO(kellegous): we should probably unsub from start here.
+		var signStartResponse SignStartResponse
+		err = signStartResponse.readFrom(bytes.NewReader(data))
+		if err != nil {
+			close(ch)
+			return
+		}
+
+		if len(data) > int(signStartResponse.MaxSignDataLen) {
+			err = poop.New("data is too long")
+			close(ch)
+			return
+		}
+
+		err = sendNextChunk()
+		if err != nil {
+			close(ch)
+			return
+		}
+	})
+	defer unsubSignStart()
+
+	unsubSignature := notifier.Subscribe(ResponseSignature, func(data []byte) {
+		var res SignatureResponse
+		err = res.readFrom(bytes.NewReader(data))
+		if err != nil {
+			close(ch)
+			return
+		}
+		signature = res.Signature[:]
+		close(ch)
+	})
+	defer unsubSignature()
+
+	if err := writeCommandCode(c.tx, CommandSignStart); err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	select {
+	case <-ch:
+		return signature, err
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
