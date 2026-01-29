@@ -120,8 +120,8 @@ func Time(t time.Time, e binary.ByteOrder) LiteralPattern {
 
 func LatLon(lat float64, lon float64, e binary.ByteOrder) LiteralPattern {
 	buf := make([]byte, 8)
-	binary.BigEndian.PutUint32(buf, uint32(lat*1e6))
-	binary.BigEndian.PutUint32(buf[4:], uint32(lon*1e6))
+	e.PutUint32(buf, uint32(lat*1e6))
+	e.PutUint32(buf[4:], uint32(lon*1e6))
 	return &fromBytes{
 		data: buf,
 		desc: fmt.Sprintf("latlon(%f, %f, %s)", lat, lon, e.String()),

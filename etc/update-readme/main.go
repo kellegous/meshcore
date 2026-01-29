@@ -88,6 +88,7 @@ var sections = Sections{
 			},
 			{
 				Title: "setAdvertLatLong",
+				Done:  true,
 			},
 			{
 				Title: "setTxPower",

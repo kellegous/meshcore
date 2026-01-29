@@ -743,3 +743,34 @@ func (c *Conn) GetStatus(ctx context.Context, key *PublicKey) (*StatusResponse, 
 		return nil, ctx.Err()
 	}
 }
+
+// SetAdvertLatLon sets the advert latitude and longitude.
+func (c *Conn) SetAdvertLatLon(ctx context.Context, lat float64, lon float64) error {
+	notifier := c.tx.Notifier()
+
+	var err error
+
+	ch := make(chan struct{})
+
+	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
+		close(ch)
+	})
+	defer unsubOk()
+
+	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
+		err = readError(data)
+		close(ch)
+	})
+	defer unsubErr()
+
+	if err := writeSetAdvertLatLonCommand(c.tx, lat, lon); err != nil {
+		return poop.Chain(err)
+	}
+
+	select {
+	case <-ch:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}

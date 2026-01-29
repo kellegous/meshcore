@@ -711,3 +711,18 @@ func writeImportPrivateKeyCommand(w io.Writer, privateKey []byte) error {
 	}
 	return nil
 }
+
+func writeSetAdvertLatLonCommand(w io.Writer, lat, lon float64) error {
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandSetAdvertLatLon); err != nil {
+		return poop.Chain(err)
+	}
+	if err := writeLatLon(&buf, lat, lon); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
