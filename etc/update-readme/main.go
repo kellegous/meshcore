@@ -131,6 +131,7 @@ var sections = Sections{
 			},
 			{
 				Title: "shareContact",
+				Done:  true,
 			},
 			{
 				Title: "removeContact",

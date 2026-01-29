@@ -682,6 +682,21 @@ func writeImportContactCommand(w io.Writer, advertPacket []byte) error {
 	return nil
 }
 
+func writeShareContactCommand(w io.Writer, key *PublicKey) error {
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandShareContact); err != nil {
+		return poop.Chain(err)
+	}
+	if err := key.writeTo(&buf); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
 func writeGetStatusCommand(w io.Writer, key *PublicKey) error {
 	var buf bytes.Buffer
 	if err := writeCommandCode(&buf, CommandSendStatusReq); err != nil {

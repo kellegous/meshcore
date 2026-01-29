@@ -492,6 +492,51 @@ func TestExportContact(t *testing.T) {
 	})
 }
 
+func TestShareContact(t *testing.T) {
+	key := fakePublicKey(42)
+
+	t.Run("success", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.ShareContact(t.Context(), key); err != nil {
+				t.Fatal(err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandShareContact),
+			Bytes(key.Bytes()...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseOk, nil)
+
+		controller.Wait()
+	})
+
+	t.Run("error", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.ShareContact(t.Context(), key); err == nil || err.Error() != "response error: 5 (file io error)" {
+				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandShareContact),
+			Bytes(key.Bytes()...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseErr,
+			BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+
+		controller.Wait()
+	})
+}
+
 func TestExportPrivateKey(t *testing.T) {
 	expected := fakeBytes(64, func(i int) byte {
 		return byte(i + 1)
