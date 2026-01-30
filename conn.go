@@ -572,32 +572,29 @@ func (c *Conn) ExportContact(ctx context.Context, key *PublicKey) ([]byte, error
 	var advertPacket []byte
 	var err error
 
-	ch := make(chan struct{})
-
-	unsubExportContact := notifier.Subscribe(ResponseExportContact, func(data []byte) {
-		// TODO(kellegous): not sure if a copy is needed here.
-		advertPacket = make([]byte, len(data))
-		copy(advertPacket, data)
-		close(ch)
-	})
-	defer unsubExportContact()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
+	wait := notifier.expect(
+		func(code NotificationCode, data []byte) {
+			switch code {
+			case ResponseExportContact:
+				advertPacket = make([]byte, len(data))
+				copy(advertPacket, data)
+			case ResponseErr:
+				err = readError(data)
+			}
+		},
+		ResponseExportContact,
+		ResponseErr,
+	)
 
 	if err := writeExportContactCommand(c.tx, key); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return advertPacket, err
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	if err := wait(ctx); err != nil {
+		return nil, poop.Chain(err)
 	}
+
+	return advertPacket, err
 }
 
 // ImportContact imports a contact into the device.
@@ -637,29 +634,26 @@ func (c *Conn) ShareContact(ctx context.Context, key *PublicKey) error {
 
 	var err error
 
-	ch := make(chan struct{})
-
-	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
-		close(ch)
-	})
-	defer unsubOk()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
+	wait := notifier.expect(
+		func(code NotificationCode, data []byte) {
+			switch code {
+			case ResponseErr:
+				err = readError(data)
+			}
+		},
+		ResponseOk,
+		ResponseErr,
+	)
 
 	if err := writeShareContactCommand(c.tx, key); err != nil {
 		return poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
+	if err := wait(ctx); err != nil {
+		return poop.Chain(err)
 	}
+
+	return err
 }
 
 // ExportPrivateKey exports the private key from the device.
