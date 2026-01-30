@@ -1,6 +1,7 @@
 package meshcore
 
 import (
+	"context"
 	"slices"
 	"sync"
 )
@@ -17,6 +18,34 @@ type Notifier struct {
 func NewNotifier() *Notifier {
 	return &Notifier{
 		listeners: make(map[NotificationCode][]*listener),
+	}
+}
+
+func (n *Notifier) waitFor(
+	ctx context.Context,
+	fn func(NotificationCode, []byte),
+	codes ...NotificationCode,
+) error {
+	unsubs := make([]func(), len(codes))
+	ch := make(chan struct{})
+	for _, code := range codes {
+		unsubs = append(unsubs, n.Subscribe(code, func(data []byte) {
+			fn(code, data)
+			close(ch)
+		}))
+	}
+
+	defer func() {
+		for _, unsub := range unsubs {
+			unsub()
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-ch:
+		return nil
 	}
 }
 

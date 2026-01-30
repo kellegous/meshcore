@@ -34,7 +34,7 @@ func DoCommand(
 	op func(conn *Conn),
 ) *Controller {
 	tx := &fakeTransport{
-		ch:       make(chan []byte),
+		ch:       make(chan []byte, 1),
 		done:     make(chan struct{}),
 		notifier: NewNotifier(),
 	}
@@ -908,6 +908,99 @@ func TestResetPath(t *testing.T) {
 
 		controller.Notify(ResponseErr,
 			BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+
+		controller.Wait()
+	})
+}
+
+func TestSign(t *testing.T) {
+	shortMessage := []byte("Hello, world!")
+	longMessage := fakeBytes(129, func(i int) byte {
+		return byte(i + 1)
+	})
+
+	expected := fakeBytes(64, func(i int) byte {
+		return byte(i + 1)
+	})
+
+	t.Run("success short", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			signature, err := conn.Sign(t.Context(), shortMessage)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(signature, expected) {
+				t.Fatalf("expected %v, got %v", expected, signature)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSignStart),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseSignStart, BytesFrom(
+			Byte(0),
+			Uint32(1024, binary.LittleEndian),
+		))
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSignData),
+			Bytes(shortMessage...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseSignature, BytesFrom(Bytes(expected...)))
+
+		controller.Wait()
+	})
+
+	t.Run("success long", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			signature, err := conn.Sign(t.Context(), longMessage)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(signature, expected) {
+				t.Fatalf("expected %v, got %v", expected, signature)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSignStart),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseSignStart, BytesFrom(
+			Byte(0),
+			Uint32(1024, binary.LittleEndian),
+		))
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSignData),
+			Bytes(longMessage[:128]...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseOk, nil)
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSignData),
+			Bytes(longMessage[128:]...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseSignature, BytesFrom(Bytes(expected...)))
 
 		controller.Wait()
 	})

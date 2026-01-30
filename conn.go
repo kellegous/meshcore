@@ -977,7 +977,6 @@ func (c *Conn) Sign(ctx context.Context, data []byte) ([]byte, error) {
 	defer unsubErr()
 
 	unsubSignStart := notifier.Subscribe(ResponseSignStart, func(data []byte) {
-		// TODO(kellegous): we should probably unsub from start here.
 		var signStartResponse SignStartResponse
 		err = signStartResponse.readFrom(bytes.NewReader(data))
 		if err != nil {
