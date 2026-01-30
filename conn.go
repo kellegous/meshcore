@@ -31,35 +31,75 @@ func (c *Conn) Disconnect() error {
 	return c.tx.Disconnect()
 }
 
+type expectation struct {
+	ch     chan struct{}
+	unsubs []func()
+}
+
+func (e *expectation) Wait(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-e.ch:
+		return nil
+	}
+}
+
+func (e *expectation) Unsubscribe() {
+	// discard any pending events on the channel
+	select {
+	case <-e.ch:
+	default:
+	}
+	close(e.ch)
+	for _, unsub := range e.unsubs {
+		unsub()
+	}
+}
+
+func expect(
+	notifier *Notifier,
+	fn func(NotificationCode, []byte),
+	codes ...NotificationCode,
+) *expectation {
+	e := &expectation{
+		ch: make(chan struct{}),
+	}
+
+	for _, code := range codes {
+		e.unsubs = append(e.unsubs, notifier.Subscribe(code, func(data []byte) {
+			fn(code, data)
+			e.ch <- struct{}{}
+		}))
+	}
+
+	return e
+}
+
 // AddOrUpdateContact adds or updates a contact on the device.
 func (c *Conn) AddOrUpdateContact(ctx context.Context, contact *Contact) error {
 	notifier := c.tx.Notifier()
 
 	var err error
 
-	ch := make(chan struct{})
-
-	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
-		close(ch)
-	})
-	defer unsubOk()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
+	expect := expect(notifier, func(code NotificationCode, data []byte) {
+		switch code {
+		case ResponseOk:
+		case ResponseErr:
+			err = readError(data)
+		}
+	}, ResponseOk, ResponseErr)
+	defer expect.Unsubscribe()
 
 	if err := writeAddOrUpdateContactCommand(c.tx, contact); err != nil {
 		return poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
+	if err := expect.Wait(ctx); err != nil {
+		return poop.Chain(err)
 	}
+
+	return err
 }
 
 // RemoveContact removes a contact from the device.
@@ -572,25 +612,22 @@ func (c *Conn) ExportContact(ctx context.Context, key *PublicKey) ([]byte, error
 	var advertPacket []byte
 	var err error
 
-	wait := notifier.expect(
-		func(code NotificationCode, data []byte) {
-			switch code {
-			case ResponseExportContact:
-				advertPacket = make([]byte, len(data))
-				copy(advertPacket, data)
-			case ResponseErr:
-				err = readError(data)
-			}
-		},
-		ResponseExportContact,
-		ResponseErr,
-	)
+	expect := expect(notifier, func(code NotificationCode, data []byte) {
+		switch code {
+		case ResponseExportContact:
+			advertPacket = make([]byte, len(data))
+			copy(advertPacket, data)
+		case ResponseErr:
+			err = readError(data)
+		}
+	}, ResponseExportContact, ResponseErr)
+	defer expect.Unsubscribe()
 
 	if err := writeExportContactCommand(c.tx, key); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	if err := wait(ctx); err != nil {
+	if err := expect.Wait(ctx); err != nil {
 		return nil, poop.Chain(err)
 	}
 
@@ -630,26 +667,24 @@ func (c *Conn) ImportContact(ctx context.Context, advertPacket []byte) error {
 
 // ShareContact shares a contact with the device.
 func (c *Conn) ShareContact(ctx context.Context, key *PublicKey) error {
-	notifier := c.tx.Notifier()
-
 	var err error
 
-	wait := notifier.expect(
+	expect := expect(
+		c.tx.Notifier(),
 		func(code NotificationCode, data []byte) {
 			switch code {
+			case ResponseOk:
 			case ResponseErr:
 				err = readError(data)
 			}
-		},
-		ResponseOk,
-		ResponseErr,
-	)
+		}, ResponseOk, ResponseErr)
+	defer expect.Unsubscribe()
 
 	if err := writeShareContactCommand(c.tx, key); err != nil {
 		return poop.Chain(err)
 	}
 
-	if err := wait(ctx); err != nil {
+	if err := expect.Wait(ctx); err != nil {
 		return poop.Chain(err)
 	}
 
