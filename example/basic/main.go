@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/ed25519"
+	"encoding/hex"
 	"flag"
 	"fmt"
 
@@ -26,7 +28,9 @@ func run(ctx context.Context) error {
 		syncNextMessage,
 		sendAdvert,
 		exportContact,
-		getStatus bool
+		getStatus,
+		exportPrivateKey,
+		sign bool
 
 	flag.BoolVar(
 		&sendMessage,
@@ -81,6 +85,18 @@ func run(ctx context.Context) error {
 		"get-status",
 		false,
 		"get the status from the device",
+	)
+	flag.BoolVar(
+		&exportPrivateKey,
+		"export-private-key",
+		false,
+		"export the private key from the device",
+	)
+	flag.BoolVar(
+		&sign,
+		"sign",
+		false,
+		"sign a message with the device",
 	)
 	flag.Parse()
 
@@ -194,6 +210,40 @@ func run(ctx context.Context) error {
 			return poop.Chain(err)
 		}
 		fmt.Printf("status: %+v\n", status)
+	}
+	if exportPrivateKey {
+		key, err := conn.ExportPrivateKey(ctx)
+		if err != nil {
+			return poop.Chain(err)
+		}
+		fmt.Printf("private key: %s\n", hex.EncodeToString(key))
+	}
+	if sign {
+		message := []byte("Hello, world!")
+		signature, err := conn.Sign(ctx, message)
+		if err != nil {
+			return poop.Chain(err)
+		}
+		fmt.Printf("signature: %s\n", hex.EncodeToString(signature))
+
+		// TODO(kellegous): this doesn't work.
+		key, err := conn.ExportPrivateKey(ctx)
+		if err != nil {
+			return poop.Chain(err)
+		}
+		fmt.Printf("private key: %s\n", hex.EncodeToString(key))
+
+		selfInfo, err := conn.GetSelfInfo(ctx)
+		if err != nil {
+			return poop.Chain(err)
+		}
+		fmt.Printf("self info: %s\n", hex.EncodeToString(selfInfo.PublicKey.Bytes()))
+
+		if ed25519.Verify(selfInfo.PublicKey.Bytes(), message, signature) {
+			fmt.Printf("signature is valid\n")
+		} else {
+			fmt.Printf("signature is invalid\n")
+		}
 	}
 	return nil
 }

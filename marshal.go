@@ -365,6 +365,65 @@ func (s *SignatureResponse) readFrom(r io.Reader) error {
 	return nil
 }
 
+type SelfInfoResponse struct {
+	Type              byte
+	TxPower           byte
+	MaxTxPower        byte
+	PublicKey         PublicKey
+	AdvLat            float64
+	AdvLon            float64
+	ManualAddContacts byte
+	RadioFreq         uint32
+	RadioBw           uint32
+	RadioSf           byte
+	RadioCr           byte
+	Name              string
+}
+
+func (s *SelfInfoResponse) readFrom(r io.Reader) error {
+	if err := binary.Read(r, binary.LittleEndian, &s.Type); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &s.TxPower); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &s.MaxTxPower); err != nil {
+		return poop.Chain(err)
+	}
+	if err := s.PublicKey.readFrom(r); err != nil {
+		return poop.Chain(err)
+	}
+	var err error
+	s.AdvLat, s.AdvLon, err = readLatLon(r)
+	if err != nil {
+		return poop.Chain(err)
+	}
+	var reserved [3]byte
+	if _, err := io.ReadFull(r, reserved[:]); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &s.ManualAddContacts); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &s.RadioFreq); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &s.RadioBw); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &s.RadioSf); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &s.RadioCr); err != nil {
+		return poop.Chain(err)
+	}
+	s.Name, err = readString(r)
+	if err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
 func readCString(r io.Reader, maxLen int) (string, error) {
 	buf := make([]byte, maxLen)
 	if _, err := io.ReadFull(r, buf[:]); err != nil {
@@ -819,6 +878,30 @@ func writeSignDataCommand(w io.Writer, data []byte) error {
 		return poop.Chain(err)
 	}
 	if _, err := buf.Write(data); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
+func writeCommandAppStartCommand(w io.Writer) error {
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandAppStart); err != nil {
+		return poop.Chain(err)
+	}
+	var appVer byte = 1
+	if err := binary.Write(&buf, binary.LittleEndian, appVer); err != nil {
+		return poop.Chain(err)
+	}
+	var reserved [6]byte
+	if _, err := buf.Write(reserved[:]); err != nil {
+		return poop.Chain(err)
+	}
+	appName := "test"
+	if err := writeString(&buf, appName); err != nil {
 		return poop.Chain(err)
 	}
 

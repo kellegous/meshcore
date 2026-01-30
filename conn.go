@@ -899,6 +899,39 @@ func (c *Conn) ResetPath(ctx context.Context, key *PublicKey) error {
 	}
 }
 
+// GetSelfInfo returns the self information from the device.
+func (c *Conn) GetSelfInfo(ctx context.Context) (*SelfInfoResponse, error) {
+	notifier := c.tx.Notifier()
+
+	var selfInfo SelfInfoResponse
+	var err error
+
+	ch := make(chan struct{})
+
+	unsubSelfInfo := notifier.Subscribe(ResponseSelfInfo, func(data []byte) {
+		err = selfInfo.readFrom(bytes.NewReader(data))
+		close(ch)
+	})
+	defer unsubSelfInfo()
+
+	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
+		err = readError(data)
+		close(ch)
+	})
+	defer unsubErr()
+
+	if err := writeCommandAppStartCommand(c.tx); err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	select {
+	case <-ch:
+		return &selfInfo, err
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
 // Sign signs the given data.
 func (c *Conn) Sign(ctx context.Context, data []byte) ([]byte, error) {
 	// TODO(kellegous): this needs to be tested.
