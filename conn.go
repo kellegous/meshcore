@@ -946,11 +946,12 @@ func (c *Conn) Sign(ctx context.Context, data []byte) ([]byte, error) {
 
 	sendNextChunk := func() error {
 		var chunk [128]byte
-		if _, err := io.ReadFull(buf, chunk[:]); err != nil && err != io.ErrUnexpectedEOF {
+		n, err := io.ReadFull(buf, chunk[:])
+		if err != nil && err != io.ErrUnexpectedEOF {
 			return poop.Chain(err)
 		}
 
-		if err := writeSignDataCommand(c.tx, chunk[:]); err != nil {
+		if err := writeSignDataCommand(c.tx, chunk[:n]); err != nil {
 			return poop.Chain(err)
 		}
 

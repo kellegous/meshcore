@@ -8,7 +8,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
 **In Progress**
 
 ```
-|████████████████████████████████████▍             | 72%
+|█████████████████████████████████████▊            | 75%
 ```
 
 ## TODO:
@@ -87,7 +87,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
  
    - [x] shareContact
  
-   - [ ] sign
+   - [x] sign
  
    - [x] syncNextMessage
  

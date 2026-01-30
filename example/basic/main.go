@@ -226,20 +226,17 @@ func run(ctx context.Context) error {
 		}
 		fmt.Printf("signature: %s\n", hex.EncodeToString(signature))
 
-		// TODO(kellegous): this doesn't work.
-		key, err := conn.ExportPrivateKey(ctx)
-		if err != nil {
-			return poop.Chain(err)
-		}
-		fmt.Printf("private key: %s\n", hex.EncodeToString(key))
-
 		selfInfo, err := conn.GetSelfInfo(ctx)
 		if err != nil {
 			return poop.Chain(err)
 		}
-		fmt.Printf("self info: %s\n", hex.EncodeToString(selfInfo.PublicKey.Bytes()))
+		fmt.Printf("public key: %s\n", hex.EncodeToString(selfInfo.PublicKey.Bytes()))
 
-		if ed25519.Verify(selfInfo.PublicKey.Bytes(), message, signature) {
+		if ed25519.Verify(
+			selfInfo.PublicKey.Bytes(),
+			message,
+			signature,
+		) {
 			fmt.Printf("signature is valid\n")
 		} else {
 			fmt.Printf("signature is invalid\n")
