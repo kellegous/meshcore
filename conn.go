@@ -179,35 +179,28 @@ func (c *Conn) GetContacts(ctx context.Context, opts *GetContactsOptions) ([]*Co
 
 // GetDeviceTime returns the current device time.
 func (c *Conn) GetDeviceTime(ctx context.Context) (time.Time, error) {
-	notifier := c.tx.Notifier()
-
 	var t time.Time
 	var err error
 
-	ch := make(chan struct{})
-
-	unsubTime := notifier.Subscribe(ResponseCurrTime, func(data []byte) {
-		t, err = readTime(bytes.NewReader(data))
-		close(ch)
-	})
-	defer unsubTime()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
+	expect := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) {
+		switch code {
+		case ResponseCurrTime:
+			t, err = readTime(bytes.NewReader(data))
+		case ResponseErr:
+			err = readError(data)
+		}
+	}, ResponseCurrTime, ResponseErr)
+	defer expect.Unsubscribe()
 
 	if err := writeCommandCode(c.tx, CommandGetDeviceTime); err != nil {
 		return time.Time{}, poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return t, err
-	case <-ctx.Done():
-		return time.Time{}, ctx.Err()
+	if err := expect.Wait(ctx); err != nil {
+		return time.Time{}, poop.Chain(err)
 	}
+
+	return t, err
 }
 
 // GetBatteryVoltage returns the current battery voltage in millivolts.

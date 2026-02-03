@@ -215,6 +215,55 @@ func TestRemoveContact(t *testing.T) {
 	})
 }
 
+func TestGetDeviceTime(t *testing.T) {
+	expected := time.Unix(100, 0)
+
+	t.Run("success", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			time, err := conn.GetDeviceTime(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(time, expected) {
+				t.Fatalf("expected %s, got %s",
+					describe(expected),
+					describe(time),
+				)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandGetDeviceTime),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseCurrTime, BytesFrom(Time(expected, binary.LittleEndian)))
+
+		controller.Wait()
+	})
+
+	t.Run("error", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if _, err := conn.GetDeviceTime(t.Context()); err == nil || err.Error() != "response error: 5 (file io error)" {
+				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandGetDeviceTime),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+
+		controller.Wait()
+	})
+}
+
 func TestGetTelemetry(t *testing.T) {
 	key := fakePublicKey(42)
 	expected := &TelemetryResponse{
