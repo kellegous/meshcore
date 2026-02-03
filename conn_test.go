@@ -311,6 +311,52 @@ func TestGetBatteryVoltage(t *testing.T) {
 	})
 }
 
+func TestSendTextMessage(t *testing.T) {
+	recipient := fakePublicKey(42)
+	message := "hello"
+	textType := TextTypePlain
+	expected := &SentResponse{
+		Result:         0,
+		ExpectedAckCRC: 1234567890,
+		EstTimeout:     1000,
+	}
+
+	t.Run("success", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			sr, err := conn.SendTextMessage(t.Context(), recipient, message, textType)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(sr, expected) {
+				t.Fatalf("expected %s, got %s",
+					describe(expected),
+					describe(sr),
+				)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSendTxtMsg),
+			Byte(byte(textType)),
+			Byte(0),
+			AnyBytes(4), /// time = now
+			Bytes(recipient.Prefix(6)...),
+			String(message),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseSent, BytesFrom(
+			Byte(0),
+			Uint32(expected.ExpectedAckCRC, binary.LittleEndian),
+			Uint32(expected.EstTimeout, binary.LittleEndian),
+		))
+
+		controller.Wait()
+	})
+}
+
 func TestGetTelemetry(t *testing.T) {
 	key := fakePublicKey(42)
 	expected := &TelemetryResponse{

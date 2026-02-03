@@ -236,42 +236,28 @@ func (c *Conn) SendTextMessage(
 	message string,
 	textType TextType,
 ) (*SentResponse, error) {
-	notifier := c.tx.Notifier()
-
 	var sr SentResponse
 	var err error
 
-	ch := make(chan struct{})
+	expect := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) {
+		switch code {
+		case ResponseSent:
+			sr.readFrom(bytes.NewReader(data))
+		case ResponseErr:
+			err = readError(data)
+		}
+	}, ResponseSent, ResponseErr)
+	defer expect.Unsubscribe()
 
-	unsubSent := notifier.Subscribe(ResponseSent, func(data []byte) {
-		err = sr.readFrom(bytes.NewReader(data))
-		close(ch)
-	})
-	defer unsubSent()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
-
-	if err := writeSendTextMessageCommand(
-		c.tx,
-		recipient,
-		message,
-		textType,
-		0, // attempt
-		time.Now(),
-	); err != nil {
+	if err := writeSendTextMessageCommand(c.tx, recipient, message, textType, 0, time.Now()); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return &sr, err
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	if err := expect.Wait(ctx); err != nil {
+		return nil, poop.Chain(err)
 	}
+
+	return &sr, err
 }
 
 // SendChannelTextMessage sends a text message to the given channel.
