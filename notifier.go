@@ -20,14 +20,26 @@ func NewNotifier() *Notifier {
 	}
 }
 
+// singleCallUnsubFn is an optmization that makes defensive unsubscribing
+// more efficient. A caller can call the func with defer and also call it
+// inline with no concerns about performance or safety.
+func singleCallUnsubFn(n *Notifier, code NotificationCode, l *listener) func() {
+	var hasBeenCalled bool
+	return func() {
+		if hasBeenCalled {
+			return
+		}
+		n.unsubscribe(code, l)
+		hasBeenCalled = true
+	}
+}
+
 func (n *Notifier) Subscribe(code NotificationCode, fn func(data []byte)) func() {
 	n.lock.Lock()
 	defer n.lock.Unlock()
 	lr := &listener{fn: fn}
 	n.listeners[code] = append(n.listeners[code], lr)
-	return func() {
-		n.unsubscribe(code, lr)
-	}
+	return singleCallUnsubFn(n, code, lr)
 }
 
 func (n *Notifier) unsubscribe(code NotificationCode, lr *listener) {
