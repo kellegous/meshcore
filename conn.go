@@ -205,35 +205,28 @@ func (c *Conn) GetDeviceTime(ctx context.Context) (time.Time, error) {
 
 // GetBatteryVoltage returns the current battery voltage in millivolts.
 func (c *Conn) GetBatteryVoltage(ctx context.Context) (uint16, error) {
-	notifier := c.tx.Notifier()
-
 	var voltage uint16
 	var err error
 
-	ch := make(chan struct{})
-
-	unsubVoltage := notifier.Subscribe(ResponseBatteryVoltage, func(data []byte) {
-		err = binary.Read(bytes.NewReader(data), binary.LittleEndian, &voltage)
-		close(ch)
-	})
-	defer unsubVoltage()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
+	expect := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) {
+		switch code {
+		case ResponseBatteryVoltage:
+			err = binary.Read(bytes.NewReader(data), binary.LittleEndian, &voltage)
+		case ResponseErr:
+			err = readError(data)
+		}
+	}, ResponseBatteryVoltage, ResponseErr)
+	defer expect.Unsubscribe()
 
 	if err := writeCommandCode(c.tx, CommandGetBatteryVoltage); err != nil {
 		return 0, poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return voltage, err
-	case <-ctx.Done():
-		return 0, ctx.Err()
+	if err := expect.Wait(ctx); err != nil {
+		return 0, poop.Chain(err)
 	}
+
+	return voltage, err
 }
 
 // SendTextMessage sends a text message to the recipient.

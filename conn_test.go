@@ -264,6 +264,53 @@ func TestGetDeviceTime(t *testing.T) {
 	})
 }
 
+func TestGetBatteryVoltage(t *testing.T) {
+	expected := uint16(100)
+
+	t.Run("success", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			voltage, err := conn.GetBatteryVoltage(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !reflect.DeepEqual(voltage, expected) {
+				t.Fatalf("expected %d, got %d", expected, voltage)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandGetBatteryVoltage),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseBatteryVoltage, BytesFrom(Uint16(expected, binary.LittleEndian)))
+
+		controller.Wait()
+	})
+
+	t.Run("error", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if _, err := conn.GetBatteryVoltage(t.Context()); err == nil || err.Error() != "response error: 5 (file io error)" {
+				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandGetBatteryVoltage),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+
+		controller.Wait()
+	})
+}
+
 func TestGetTelemetry(t *testing.T) {
 	key := fakePublicKey(42)
 	expected := &TelemetryResponse{

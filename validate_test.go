@@ -109,6 +109,19 @@ func Uint32(i uint32, e binary.ByteOrder) LiteralPattern {
 	}
 }
 
+func Uint16(i uint16, e binary.ByteOrder) LiteralPattern {
+	buf := make([]byte, 2)
+	e.PutUint16(buf, i)
+	return &fromBytes{
+		data: buf,
+		desc: fmt.Sprintf("uint16(%d, %s)", i, e.String()),
+	}
+}
+
+func Int16(i int16, e binary.ByteOrder) LiteralPattern {
+	return Uint16(uint16(i), e)
+}
+
 func Time(t time.Time, e binary.ByteOrder) LiteralPattern {
 	buf := make([]byte, 4)
 	e.PutUint32(buf, uint32(t.Unix()))
