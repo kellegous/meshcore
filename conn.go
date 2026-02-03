@@ -46,7 +46,8 @@ func (e *expectation) Wait(ctx context.Context) error {
 }
 
 func (e *expectation) Unsubscribe() {
-	// discard any pending events on the channel
+	// discard any pending events on the channel to ensure we
+	// don't block the notification routine.
 	select {
 	case <-e.ch:
 	default:
@@ -78,11 +79,9 @@ func expect(
 
 // AddOrUpdateContact adds or updates a contact on the device.
 func (c *Conn) AddOrUpdateContact(ctx context.Context, contact *Contact) error {
-	notifier := c.tx.Notifier()
-
 	var err error
 
-	expect := expect(notifier, func(code NotificationCode, data []byte) {
+	expect := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) {
 		switch code {
 		case ResponseOk:
 		case ResponseErr:
@@ -104,33 +103,26 @@ func (c *Conn) AddOrUpdateContact(ctx context.Context, contact *Contact) error {
 
 // RemoveContact removes a contact from the device.
 func (c *Conn) RemoveContact(ctx context.Context, key *PublicKey) error {
-	notifier := c.tx.Notifier()
-
 	var err error
 
-	ch := make(chan struct{})
-
-	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
-		close(ch)
-	})
-	defer unsubOk()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
+	expect := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) {
+		switch code {
+		case ResponseOk:
+		case ResponseErr:
+			err = readError(data)
+		}
+	}, ResponseOk, ResponseErr)
+	defer expect.Unsubscribe()
 
 	if err := writeRemoveContactCommand(c.tx, key); err != nil {
 		return poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
+	if err := expect.Wait(ctx); err != nil {
+		return poop.Chain(err)
 	}
+
+	return err
 }
 
 type GetContactsOptions struct {

@@ -171,6 +171,50 @@ func TestGetContacts(t *testing.T) {
 	})
 }
 
+func TestRemoveContact(t *testing.T) {
+	key := fakePublicKey(42)
+
+	t.Run("success", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.RemoveContact(t.Context(), key); err != nil {
+				t.Fatal(err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandRemoveContact),
+			Bytes(key.Bytes()...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseOk, nil)
+
+		controller.Wait()
+	})
+
+	t.Run("error", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.RemoveContact(t.Context(), key); err == nil || err.Error() != "response error: 5 (file io error)" {
+				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandRemoveContact),
+			Bytes(key.Bytes()...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+
+		controller.Wait()
+	})
+}
+
 func TestGetTelemetry(t *testing.T) {
 	key := fakePublicKey(42)
 	expected := &TelemetryResponse{
