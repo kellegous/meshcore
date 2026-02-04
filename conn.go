@@ -710,131 +710,123 @@ func (c *Conn) ImportPrivateKey(ctx context.Context, privateKey []byte) error {
 // TODO(kellegous): This is not working on real devices currently. We seed the
 // SentResponse arrive, but we never get a PushStatusResponse.
 func (c *Conn) GetStatus(ctx context.Context, key *PublicKey) (*StatusResponse, error) {
-	notifier := c.tx.Notifier()
-
 	var status StatusResponse
 	var err error
 
-	ch := make(chan struct{})
-
-	// TODO(kellegous): Why is this a push event?
-	// TODO(kellegous): We should reject responses where the key prefix
-	// doesn't match the given key.
-	unsubStatus := notifier.Subscribe(PushStatusResponse, func(data []byte) {
-		err = status.readFrom(bytes.NewReader(data))
-		close(ch)
-	})
-	defer unsubStatus()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
+	expect := expect(
+		c.tx.Notifier(),
+		func(code NotificationCode, data []byte) bool {
+			switch code {
+			// TODO(kellegous): Why is this a push event?
+			// TODO(kellegous): We should reject responses where the key prefix
+			// doesn't match the given key.
+			case PushStatusResponse:
+				err = status.readFrom(bytes.NewReader(data))
+			case ResponseErr:
+				err = readError(data)
+			}
+			return false
+		},
+		PushStatusResponse,
+		ResponseErr)
+	defer expect.Unsubscribe()
 
 	if err := writeGetStatusCommand(c.tx, key); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return &status, err
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	if err := expect.Wait(ctx); err != nil {
+		return nil, poop.Chain(err)
 	}
+
+	return &status, err
 }
 
 // SetAdvertLatLon sets the advert latitude and longitude.
 func (c *Conn) SetAdvertLatLon(ctx context.Context, lat float64, lon float64) error {
-	notifier := c.tx.Notifier()
-
 	var err error
 
-	ch := make(chan struct{})
-
-	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
-		close(ch)
-	})
-	defer unsubOk()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
+	expect := expect(
+		c.tx.Notifier(),
+		func(code NotificationCode, data []byte) bool {
+			switch code {
+			case ResponseOk:
+			case ResponseErr:
+				err = readError(data)
+			}
+			return false
+		},
+		ResponseOk,
+		ResponseErr)
+	defer expect.Unsubscribe()
 
 	if err := writeSetAdvertLatLonCommand(c.tx, lat, lon); err != nil {
 		return poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
+	if err := expect.Wait(ctx); err != nil {
+		return poop.Chain(err)
 	}
+
+	return err
 }
 
 // SetAdvertName sets the advert name.
 func (c *Conn) SetAdvertName(ctx context.Context, name string) error {
-	notifier := c.tx.Notifier()
-
 	var err error
 
-	ch := make(chan struct{})
-
-	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
-		close(ch)
-	})
-	defer unsubOk()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
+	expect := expect(
+		c.tx.Notifier(),
+		func(code NotificationCode, data []byte) bool {
+			switch code {
+			case ResponseOk:
+			case ResponseErr:
+				err = readError(data)
+			}
+			return false
+		},
+		ResponseOk,
+		ResponseErr)
+	defer expect.Unsubscribe()
 
 	if err := writeSetAdvertNameCommand(c.tx, name); err != nil {
 		return poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
+	if err := expect.Wait(ctx); err != nil {
+		return poop.Chain(err)
 	}
+
+	return err
 }
 
 // SetDeviceTime sets the device time.
 func (c *Conn) SetDeviceTime(ctx context.Context, time time.Time) error {
-	notifier := c.tx.Notifier()
-
 	var err error
 
-	ch := make(chan struct{})
-
-	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
-		close(ch)
-	})
-	defer unsubOk()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
+	expect := expect(
+		c.tx.Notifier(),
+		func(code NotificationCode, data []byte) bool {
+			switch code {
+			case ResponseOk:
+			case ResponseErr:
+				err = readError(data)
+			}
+			return false
+		},
+		ResponseOk,
+		ResponseErr)
+	defer expect.Unsubscribe()
 
 	if err := writeSetDeviceTimeCommand(c.tx, time); err != nil {
 		return poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
+	if err := expect.Wait(ctx); err != nil {
+		return poop.Chain(err)
 	}
+
+	return err
 }
 
 // ResetPath resets the path for the given contact key.
