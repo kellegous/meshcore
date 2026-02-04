@@ -271,22 +271,21 @@ func (c *Conn) SendChannelTextMessage(
 	message string,
 	textType TextType,
 ) error {
-	notifier := c.tx.Notifier()
-
 	var err error
 
-	ch := make(chan struct{})
-
-	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
-		close(ch)
-	})
-	defer unsubOk()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
+	expect := expect(
+		c.tx.Notifier(),
+		func(code NotificationCode, data []byte) bool {
+			switch code {
+			case ResponseOk:
+			case ResponseErr:
+				err = readError(data)
+			}
+			return false
+		},
+		ResponseOk,
+		ResponseErr)
+	defer expect.Unsubscribe()
 
 	if err := writeSendChannelTextMessageCommand(
 		c.tx,
@@ -298,12 +297,11 @@ func (c *Conn) SendChannelTextMessage(
 		return poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
+	if err := expect.Wait(ctx); err != nil {
+		return poop.Chain(err)
 	}
+
+	return err
 }
 
 // GetTelemetry returns the telemetry data for the given contact key.
@@ -311,44 +309,33 @@ func (c *Conn) GetTelemetry(
 	ctx context.Context,
 	key *PublicKey,
 ) (*TelemetryResponse, error) {
-	notifier := c.tx.Notifier()
-
 	var telemetry TelemetryResponse
 	var err error
 
-	ch := make(chan struct{})
-
-	// TODO(kellegous): Why is this a push event?
-	unsubTelemetry := notifier.Subscribe(PushTelemetryResponse, func(data []byte) {
-		err = telemetry.readFrom(bytes.NewReader(data))
-		close(ch)
-	})
-	defer unsubTelemetry()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
+	expect := expect(
+		c.tx.Notifier(),
+		func(code NotificationCode, data []byte) bool {
+			switch code {
+			case PushTelemetryResponse:
+				err = telemetry.readFrom(bytes.NewReader(data))
+			case ResponseErr:
+				err = readError(data)
+			}
+			return false
+		},
+		PushTelemetryResponse,
+		ResponseErr)
+	defer expect.Unsubscribe()
 
 	if err := writeGetTelemetryCommand(c.tx, key); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		if err != nil {
-			return nil, poop.Chain(err)
-		}
-
-		if !bytes.Equal(key.Prefix(6), telemetry.pubKeyPrefix[:]) {
-			return nil, poop.New("telemetry response is not for the given contact key")
-		}
-
-		return &telemetry, nil
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	if err := expect.Wait(ctx); err != nil {
+		return nil, poop.Chain(err)
 	}
+
+	return &telemetry, err
 }
 
 // GetChannel returns the channel information for the given index.

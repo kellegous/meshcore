@@ -395,6 +395,68 @@ func TestGetTelemetry(t *testing.T) {
 	controller.Wait()
 }
 
+func TestGetChannel(t *testing.T) {
+	idx := uint8(3)
+	expected := &ChannelInfo{
+		Index: 3,
+		Name:  "chan",
+		Secret: fakeBytes(16, func(i int) byte {
+			return byte(i + 1)
+		}),
+	}
+
+	t.Run("success", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			channel, err := conn.GetChannel(t.Context(), idx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(channel, expected) {
+				t.Fatalf("expected %s, got %s",
+					describe(expected),
+					describe(channel),
+				)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandGetChannel),
+			Byte(idx),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseChannelInfo, BytesFrom(
+			Byte(expected.Index),
+			CString(expected.Name, 32),
+			Bytes(expected.Secret...),
+		))
+
+		controller.Wait()
+	})
+
+	t.Run("error", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if _, err := conn.GetChannel(t.Context(), idx); err == nil || err.Error() != "response error: 5 (file io error)" {
+				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandGetChannel),
+			Byte(idx),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+
+		controller.Wait()
+	})
+}
+
 func TestSetChannel(t *testing.T) {
 	channel := &ChannelInfo{
 		Index: 3,
