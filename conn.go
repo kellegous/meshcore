@@ -37,22 +37,19 @@ type expectation struct {
 }
 
 func (e *expectation) Wait(ctx context.Context) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-e.ch:
-		return nil
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case _, ok := <-e.ch:
+			if !ok {
+				return nil
+			}
+		}
 	}
 }
 
 func (e *expectation) Unsubscribe() {
-	// discard any pending events on the channel to ensure we
-	// don't block the notification routine.
-	select {
-	case <-e.ch:
-	default:
-	}
-	close(e.ch)
 	for _, unsub := range e.unsubs {
 		unsub()
 	}
@@ -60,7 +57,7 @@ func (e *expectation) Unsubscribe() {
 
 func expect(
 	notifier *Notifier,
-	fn func(NotificationCode, []byte),
+	fn func(NotificationCode, []byte) bool,
 	codes ...NotificationCode,
 ) *expectation {
 	e := &expectation{
@@ -69,8 +66,11 @@ func expect(
 
 	for _, code := range codes {
 		e.unsubs = append(e.unsubs, notifier.Subscribe(code, func(data []byte) {
-			fn(code, data)
-			e.ch <- struct{}{}
+			if fn(code, data) {
+				e.ch <- struct{}{}
+			} else {
+				close(e.ch)
+			}
 		}))
 	}
 
@@ -81,12 +81,13 @@ func expect(
 func (c *Conn) AddOrUpdateContact(ctx context.Context, contact *Contact) error {
 	var err error
 
-	expect := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) {
+	expect := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) bool {
 		switch code {
 		case ResponseOk:
 		case ResponseErr:
 			err = readError(data)
 		}
+		return false
 	}, ResponseOk, ResponseErr)
 	defer expect.Unsubscribe()
 
@@ -105,12 +106,13 @@ func (c *Conn) AddOrUpdateContact(ctx context.Context, contact *Contact) error {
 func (c *Conn) RemoveContact(ctx context.Context, key *PublicKey) error {
 	var err error
 
-	expect := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) {
+	expect := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) bool {
 		switch code {
 		case ResponseOk:
 		case ResponseErr:
 			err = readError(data)
 		}
+		return false
 	}, ResponseOk, ResponseErr)
 	defer expect.Unsubscribe()
 
@@ -131,50 +133,49 @@ type GetContactsOptions struct {
 
 // GetContacts returns the list of contacts from the device.
 func (c *Conn) GetContacts(ctx context.Context, opts *GetContactsOptions) ([]*Contact, error) {
-	notifier := c.tx.Notifier()
-
 	if opts == nil {
 		opts = &GetContactsOptions{}
 	}
 
-	ch := make(chan []byte)
-	unsubContact := notifier.Subscribe(ResponseContact, func(data []byte) {
-		ch <- data
-	})
-	defer func() {
-		unsubContact()
-		// discard any pending frames on the channel
-		select {
-		case <-ch:
-		default:
-		}
-	}()
+	var contacts []*Contact
+	var err error
 
-	unsubEndOfContacts := notifier.Subscribe(ResponseEndOfContacts, func(data []byte) {
-		close(ch)
-	})
-	defer unsubEndOfContacts()
+	expect := expect(
+		c.tx.Notifier(),
+		func(code NotificationCode, data []byte) bool {
+			switch code {
+			case ResponseContactsStart:
+				return true
+			case ResponseErr:
+				err = readError(data)
+				return false
+			case ResponseContact:
+				var contact Contact
+				if err := contact.readFrom(bytes.NewReader(data)); err != nil {
+					return false
+				}
+				contacts = append(contacts, &contact)
+				return true
+			case ResponseEndOfContacts:
+				return false
+			}
+			panic("unreachable")
+		},
+		ResponseContactsStart,
+		ResponseContact,
+		ResponseEndOfContacts,
+		ResponseErr)
+	defer expect.Unsubscribe()
 
 	if err := writeGetContactsCommand(c.tx, opts.Since); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	var contacts []*Contact
-	for {
-		select {
-		case data, ok := <-ch:
-			if !ok {
-				return contacts, nil
-			}
-			var contact Contact
-			if err := contact.readFrom(bytes.NewReader(data)); err != nil {
-				return nil, poop.Chain(err)
-			}
-			contacts = append(contacts, &contact)
-		case <-ctx.Done():
-			return contacts, ctx.Err()
-		}
+	if err := expect.Wait(ctx); err != nil {
+		return nil, poop.Chain(err)
 	}
+
+	return contacts, err
 }
 
 // GetDeviceTime returns the current device time.
@@ -182,13 +183,14 @@ func (c *Conn) GetDeviceTime(ctx context.Context) (time.Time, error) {
 	var t time.Time
 	var err error
 
-	expect := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) {
+	expect := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) bool {
 		switch code {
 		case ResponseCurrTime:
 			t, err = readTime(bytes.NewReader(data))
 		case ResponseErr:
 			err = readError(data)
 		}
+		return false
 	}, ResponseCurrTime, ResponseErr)
 	defer expect.Unsubscribe()
 
@@ -208,13 +210,14 @@ func (c *Conn) GetBatteryVoltage(ctx context.Context) (uint16, error) {
 	var voltage uint16
 	var err error
 
-	expect := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) {
+	expect := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) bool {
 		switch code {
 		case ResponseBatteryVoltage:
 			err = binary.Read(bytes.NewReader(data), binary.LittleEndian, &voltage)
 		case ResponseErr:
 			err = readError(data)
 		}
+		return false
 	}, ResponseBatteryVoltage, ResponseErr)
 	defer expect.Unsubscribe()
 
@@ -239,13 +242,14 @@ func (c *Conn) SendTextMessage(
 	var sr SentResponse
 	var err error
 
-	expect := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) {
+	expect := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) bool {
 		switch code {
 		case ResponseSent:
 			sr.readFrom(bytes.NewReader(data))
 		case ResponseErr:
 			err = readError(data)
 		}
+		return false
 	}, ResponseSent, ResponseErr)
 	defer expect.Unsubscribe()
 
@@ -576,7 +580,7 @@ func (c *Conn) ExportContact(ctx context.Context, key *PublicKey) ([]byte, error
 	var advertPacket []byte
 	var err error
 
-	expect := expect(notifier, func(code NotificationCode, data []byte) {
+	expect := expect(notifier, func(code NotificationCode, data []byte) bool {
 		switch code {
 		case ResponseExportContact:
 			advertPacket = make([]byte, len(data))
@@ -584,6 +588,7 @@ func (c *Conn) ExportContact(ctx context.Context, key *PublicKey) ([]byte, error
 		case ResponseErr:
 			err = readError(data)
 		}
+		return false
 	}, ResponseExportContact, ResponseErr)
 	defer expect.Unsubscribe()
 
@@ -635,12 +640,13 @@ func (c *Conn) ShareContact(ctx context.Context, key *PublicKey) error {
 
 	expect := expect(
 		c.tx.Notifier(),
-		func(code NotificationCode, data []byte) {
+		func(code NotificationCode, data []byte) bool {
 			switch code {
 			case ResponseOk:
 			case ResponseErr:
 				err = readError(data)
 			}
+			return false
 		}, ResponseOk, ResponseErr)
 	defer expect.Unsubscribe()
 
