@@ -478,79 +478,75 @@ func (c *Conn) Reboot(ctx context.Context) error {
 
 // SyncNextMessage synchronizes the next message from the device.
 func (c *Conn) SyncNextMessage(ctx context.Context) (Message, error) {
-	notifier := c.tx.Notifier()
-
 	var message Message
 	var err error
 
-	ch := make(chan struct{})
-
-	unsubContactMessage := notifier.Subscribe(ResponseContactMsgRecv, func(data []byte) {
-		var contactMessage ContactMessage
-		err = contactMessage.readFrom(bytes.NewReader(data))
-		if err == nil {
-			message = &contactMessage
-		}
-		close(ch)
-	})
-	defer unsubContactMessage()
-
-	unsubChannelMessage := notifier.Subscribe(ResponseChannelMsgRecv, func(data []byte) {
-		var channelMessage ChannelMessage
-		err = channelMessage.readFrom(bytes.NewReader(data))
-		if err == nil {
-			message = &channelMessage
-		}
-		close(ch)
-	})
-	defer unsubChannelMessage()
-
-	unsubNoMoreMessages := notifier.Subscribe(ResponseNoMoreMessages, func(data []byte) {
-		close(ch)
-	})
-	defer unsubNoMoreMessages()
+	expect := expect(
+		c.tx.Notifier(),
+		func(code NotificationCode, data []byte) bool {
+			switch code {
+			case ResponseContactMsgRecv:
+				var contactMessage ContactMessage
+				err = contactMessage.readFrom(bytes.NewReader(data))
+				if err == nil {
+					message = &contactMessage
+				}
+			case ResponseChannelMsgRecv:
+				var channelMessage ChannelMessage
+				err = channelMessage.readFrom(bytes.NewReader(data))
+				if err == nil {
+					message = &channelMessage
+				}
+			case ResponseErr:
+				err = readError(data)
+			case ResponseNoMoreMessages:
+			}
+			return false
+		},
+		ResponseContactMsgRecv,
+		ResponseChannelMsgRecv,
+		ResponseErr,
+		ResponseNoMoreMessages)
+	defer expect.Unsubscribe()
 
 	if err := writeCommandCode(c.tx, CommandSyncNextMessage); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return message, err
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	if err := expect.Wait(ctx); err != nil {
+		return nil, poop.Chain(err)
 	}
+
+	return message, err
 }
 
 // SendAdvert sends an advert to the device.
 func (c *Conn) SendAdvert(ctx context.Context, advertType SelfAdvertType) error {
-	notifier := c.tx.Notifier()
-
 	var err error
 
-	ch := make(chan struct{})
-
-	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
-		close(ch)
-	})
-	defer unsubOk()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
+	expect := expect(
+		c.tx.Notifier(),
+		func(code NotificationCode, data []byte) bool {
+			switch code {
+			case ResponseOk:
+			case ResponseErr:
+				err = readError(data)
+			}
+			return false
+		},
+		ResponseOk,
+		ResponseErr)
+	defer expect.Unsubscribe()
 
 	if err := writeSendAdvertCommand(c.tx, advertType); err != nil {
 		return poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
+	if err := expect.Wait(ctx); err != nil {
+		return poop.Chain(err)
 	}
+
+	return err
 }
 
 // ExportContact exports a contact from the device. if key is nil, the
