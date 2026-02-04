@@ -393,33 +393,31 @@ func (c *Conn) GetChannels(
 
 // SetChannel sets or updates a channel on the device.
 func (c *Conn) SetChannel(ctx context.Context, channel *ChannelInfo) error {
-	notifier := c.tx.Notifier()
-
 	var err error
 
-	ch := make(chan struct{})
-
-	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
-		close(ch)
-	})
-	defer unsubOk()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
+	expect := expect(
+		c.tx.Notifier(),
+		func(code NotificationCode, data []byte) bool {
+			switch code {
+			case ResponseOk:
+			case ResponseErr:
+				err = readError(data)
+			}
+			return false
+		},
+		ResponseOk,
+		ResponseErr)
+	defer expect.Unsubscribe()
 
 	if err := writeSetChannelCommand(c.tx, channel); err != nil {
 		return poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
+	if err := expect.Wait(ctx); err != nil {
+		return poop.Chain(err)
 	}
+
+	return err
 }
 
 // DeleteChannel deletes a channel from the device.
@@ -434,35 +432,33 @@ func (c *Conn) DeleteChannel(ctx context.Context, idx uint8) error {
 
 // DeviceQuery queries the device information.
 func (c *Conn) DeviceQuery(ctx context.Context, appTargetVer byte) (*DeviceInfo, error) {
-	notifier := c.tx.Notifier()
-
 	var deviceInfo DeviceInfo
 	var err error
 
-	ch := make(chan struct{})
-
-	unsubDeviceInfo := notifier.Subscribe(ResponseDeviceInfo, func(data []byte) {
-		err = deviceInfo.readFrom(bytes.NewReader(data))
-		close(ch)
-	})
-	defer unsubDeviceInfo()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
+	expect := expect(
+		c.tx.Notifier(),
+		func(code NotificationCode, data []byte) bool {
+			switch code {
+			case ResponseDeviceInfo:
+				err = deviceInfo.readFrom(bytes.NewReader(data))
+			case ResponseErr:
+				err = readError(data)
+			}
+			return false
+		},
+		ResponseDeviceInfo,
+		ResponseErr)
+	defer expect.Unsubscribe()
 
 	if err := writeDeviceQueryCommand(c.tx, appTargetVer); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return &deviceInfo, err
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	if err := expect.Wait(ctx); err != nil {
+		return nil, poop.Chain(err)
 	}
+
+	return &deviceInfo, err
 }
 
 // Reboot reboots the device.
