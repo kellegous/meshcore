@@ -81,7 +81,7 @@ func expect(
 func (c *Conn) AddOrUpdateContact(ctx context.Context, contact *Contact) error {
 	var err error
 
-	expect := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) bool {
+	subs := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) bool {
 		switch code {
 		case ResponseOk:
 		case ResponseErr:
@@ -89,13 +89,13 @@ func (c *Conn) AddOrUpdateContact(ctx context.Context, contact *Contact) error {
 		}
 		return false
 	}, ResponseOk, ResponseErr)
-	defer expect.Unsubscribe()
+	defer subs.Unsubscribe()
 
 	if err := writeAddOrUpdateContactCommand(c.tx, contact); err != nil {
 		return poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
+	if err := subs.Wait(ctx); err != nil {
 		return poop.Chain(err)
 	}
 
@@ -106,7 +106,7 @@ func (c *Conn) AddOrUpdateContact(ctx context.Context, contact *Contact) error {
 func (c *Conn) RemoveContact(ctx context.Context, key *PublicKey) error {
 	var err error
 
-	expect := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) bool {
+	subs := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) bool {
 		switch code {
 		case ResponseOk:
 		case ResponseErr:
@@ -114,13 +114,13 @@ func (c *Conn) RemoveContact(ctx context.Context, key *PublicKey) error {
 		}
 		return false
 	}, ResponseOk, ResponseErr)
-	defer expect.Unsubscribe()
+	defer subs.Unsubscribe()
 
 	if err := writeRemoveContactCommand(c.tx, key); err != nil {
 		return poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
+	if err := subs.Wait(ctx); err != nil {
 		return poop.Chain(err)
 	}
 
@@ -140,7 +140,7 @@ func (c *Conn) GetContacts(ctx context.Context, opts *GetContactsOptions) ([]*Co
 	var contacts []*Contact
 	var err error
 
-	expect := expect(
+	subs := expect(
 		c.tx.Notifier(),
 		func(code NotificationCode, data []byte) bool {
 			switch code {
@@ -165,13 +165,13 @@ func (c *Conn) GetContacts(ctx context.Context, opts *GetContactsOptions) ([]*Co
 		ResponseContact,
 		ResponseEndOfContacts,
 		ResponseErr)
-	defer expect.Unsubscribe()
+	defer subs.Unsubscribe()
 
 	if err := writeGetContactsCommand(c.tx, opts.Since); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
+	if err := subs.Wait(ctx); err != nil {
 		return nil, poop.Chain(err)
 	}
 
@@ -183,7 +183,7 @@ func (c *Conn) GetDeviceTime(ctx context.Context) (time.Time, error) {
 	var t time.Time
 	var err error
 
-	expect := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) bool {
+	subs := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) bool {
 		switch code {
 		case ResponseCurrTime:
 			t, err = readTime(bytes.NewReader(data))
@@ -192,13 +192,13 @@ func (c *Conn) GetDeviceTime(ctx context.Context) (time.Time, error) {
 		}
 		return false
 	}, ResponseCurrTime, ResponseErr)
-	defer expect.Unsubscribe()
+	defer subs.Unsubscribe()
 
 	if err := writeCommandCode(c.tx, CommandGetDeviceTime); err != nil {
 		return time.Time{}, poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
+	if err := subs.Wait(ctx); err != nil {
 		return time.Time{}, poop.Chain(err)
 	}
 
@@ -210,7 +210,7 @@ func (c *Conn) GetBatteryVoltage(ctx context.Context) (uint16, error) {
 	var voltage uint16
 	var err error
 
-	expect := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) bool {
+	subs := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) bool {
 		switch code {
 		case ResponseBatteryVoltage:
 			err = binary.Read(bytes.NewReader(data), binary.LittleEndian, &voltage)
@@ -219,13 +219,13 @@ func (c *Conn) GetBatteryVoltage(ctx context.Context) (uint16, error) {
 		}
 		return false
 	}, ResponseBatteryVoltage, ResponseErr)
-	defer expect.Unsubscribe()
+	defer subs.Unsubscribe()
 
 	if err := writeCommandCode(c.tx, CommandGetBatteryVoltage); err != nil {
 		return 0, poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
+	if err := subs.Wait(ctx); err != nil {
 		return 0, poop.Chain(err)
 	}
 
@@ -242,7 +242,7 @@ func (c *Conn) SendTextMessage(
 	var sr SentResponse
 	var err error
 
-	expect := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) bool {
+	subs := expect(c.tx.Notifier(), func(code NotificationCode, data []byte) bool {
 		switch code {
 		case ResponseSent:
 			sr.readFrom(bytes.NewReader(data))
@@ -251,13 +251,13 @@ func (c *Conn) SendTextMessage(
 		}
 		return false
 	}, ResponseSent, ResponseErr)
-	defer expect.Unsubscribe()
+	defer subs.Unsubscribe()
 
 	if err := writeSendTextMessageCommand(c.tx, recipient, message, textType, 0, time.Now()); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
+	if err := subs.Wait(ctx); err != nil {
 		return nil, poop.Chain(err)
 	}
 
@@ -273,7 +273,7 @@ func (c *Conn) SendChannelTextMessage(
 ) error {
 	var err error
 
-	expect := expect(
+	subs := expect(
 		c.tx.Notifier(),
 		func(code NotificationCode, data []byte) bool {
 			switch code {
@@ -285,7 +285,7 @@ func (c *Conn) SendChannelTextMessage(
 		},
 		ResponseOk,
 		ResponseErr)
-	defer expect.Unsubscribe()
+	defer subs.Unsubscribe()
 
 	if err := writeSendChannelTextMessageCommand(
 		c.tx,
@@ -297,7 +297,7 @@ func (c *Conn) SendChannelTextMessage(
 		return poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
+	if err := subs.Wait(ctx); err != nil {
 		return poop.Chain(err)
 	}
 
@@ -312,7 +312,7 @@ func (c *Conn) GetTelemetry(
 	var telemetry TelemetryResponse
 	var err error
 
-	expect := expect(
+	subs := expect(
 		c.tx.Notifier(),
 		func(code NotificationCode, data []byte) bool {
 			switch code {
@@ -325,13 +325,13 @@ func (c *Conn) GetTelemetry(
 		},
 		PushTelemetryResponse,
 		ResponseErr)
-	defer expect.Unsubscribe()
+	defer subs.Unsubscribe()
 
 	if err := writeGetTelemetryCommand(c.tx, key); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
+	if err := subs.Wait(ctx); err != nil {
 		return nil, poop.Chain(err)
 	}
 
@@ -346,7 +346,7 @@ func (c *Conn) GetChannel(
 	var channel ChannelInfo
 	var err error
 
-	expect := expect(
+	subs := expect(
 		c.tx.Notifier(),
 		func(code NotificationCode, data []byte) bool {
 			switch code {
@@ -359,13 +359,13 @@ func (c *Conn) GetChannel(
 		},
 		ResponseChannelInfo,
 		ResponseErr)
-	defer expect.Unsubscribe()
+	defer subs.Unsubscribe()
 
 	if err := writeGetChannelCommand(c.tx, idx); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
+	if err := subs.Wait(ctx); err != nil {
 		return nil, poop.Chain(err)
 	}
 
@@ -395,7 +395,7 @@ func (c *Conn) GetChannels(
 func (c *Conn) SetChannel(ctx context.Context, channel *ChannelInfo) error {
 	var err error
 
-	expect := expect(
+	subs := expect(
 		c.tx.Notifier(),
 		func(code NotificationCode, data []byte) bool {
 			switch code {
@@ -407,13 +407,13 @@ func (c *Conn) SetChannel(ctx context.Context, channel *ChannelInfo) error {
 		},
 		ResponseOk,
 		ResponseErr)
-	defer expect.Unsubscribe()
+	defer subs.Unsubscribe()
 
 	if err := writeSetChannelCommand(c.tx, channel); err != nil {
 		return poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
+	if err := subs.Wait(ctx); err != nil {
 		return poop.Chain(err)
 	}
 
@@ -435,7 +435,7 @@ func (c *Conn) DeviceQuery(ctx context.Context, appTargetVer byte) (*DeviceInfo,
 	var deviceInfo DeviceInfo
 	var err error
 
-	expect := expect(
+	subs := expect(
 		c.tx.Notifier(),
 		func(code NotificationCode, data []byte) bool {
 			switch code {
@@ -448,13 +448,13 @@ func (c *Conn) DeviceQuery(ctx context.Context, appTargetVer byte) (*DeviceInfo,
 		},
 		ResponseDeviceInfo,
 		ResponseErr)
-	defer expect.Unsubscribe()
+	defer subs.Unsubscribe()
 
 	if err := writeDeviceQueryCommand(c.tx, appTargetVer); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
+	if err := subs.Wait(ctx); err != nil {
 		return nil, poop.Chain(err)
 	}
 
@@ -481,7 +481,7 @@ func (c *Conn) SyncNextMessage(ctx context.Context) (Message, error) {
 	var message Message
 	var err error
 
-	expect := expect(
+	subs := expect(
 		c.tx.Notifier(),
 		func(code NotificationCode, data []byte) bool {
 			switch code {
@@ -507,13 +507,13 @@ func (c *Conn) SyncNextMessage(ctx context.Context) (Message, error) {
 		ResponseChannelMsgRecv,
 		ResponseErr,
 		ResponseNoMoreMessages)
-	defer expect.Unsubscribe()
+	defer subs.Unsubscribe()
 
 	if err := writeCommandCode(c.tx, CommandSyncNextMessage); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
+	if err := subs.Wait(ctx); err != nil {
 		return nil, poop.Chain(err)
 	}
 
@@ -524,7 +524,7 @@ func (c *Conn) SyncNextMessage(ctx context.Context) (Message, error) {
 func (c *Conn) SendAdvert(ctx context.Context, advertType SelfAdvertType) error {
 	var err error
 
-	expect := expect(
+	subs := expect(
 		c.tx.Notifier(),
 		func(code NotificationCode, data []byte) bool {
 			switch code {
@@ -536,13 +536,13 @@ func (c *Conn) SendAdvert(ctx context.Context, advertType SelfAdvertType) error 
 		},
 		ResponseOk,
 		ResponseErr)
-	defer expect.Unsubscribe()
+	defer subs.Unsubscribe()
 
 	if err := writeSendAdvertCommand(c.tx, advertType); err != nil {
 		return poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
+	if err := subs.Wait(ctx); err != nil {
 		return poop.Chain(err)
 	}
 
@@ -557,7 +557,7 @@ func (c *Conn) ExportContact(ctx context.Context, key *PublicKey) ([]byte, error
 	var advertPacket []byte
 	var err error
 
-	expect := expect(notifier, func(code NotificationCode, data []byte) bool {
+	subs := expect(notifier, func(code NotificationCode, data []byte) bool {
 		switch code {
 		case ResponseExportContact:
 			advertPacket = make([]byte, len(data))
@@ -567,13 +567,13 @@ func (c *Conn) ExportContact(ctx context.Context, key *PublicKey) ([]byte, error
 		}
 		return false
 	}, ResponseExportContact, ResponseErr)
-	defer expect.Unsubscribe()
+	defer subs.Unsubscribe()
 
 	if err := writeExportContactCommand(c.tx, key); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
+	if err := subs.Wait(ctx); err != nil {
 		return nil, poop.Chain(err)
 	}
 
@@ -584,7 +584,7 @@ func (c *Conn) ExportContact(ctx context.Context, key *PublicKey) ([]byte, error
 func (c *Conn) ImportContact(ctx context.Context, advertPacket []byte) error {
 	var err error
 
-	expect := expect(
+	subs := expect(
 		c.tx.Notifier(),
 		func(code NotificationCode, data []byte) bool {
 			switch code {
@@ -596,13 +596,13 @@ func (c *Conn) ImportContact(ctx context.Context, advertPacket []byte) error {
 		},
 		ResponseOk,
 		ResponseErr)
-	defer expect.Unsubscribe()
+	defer subs.Unsubscribe()
 
 	if err := writeImportContactCommand(c.tx, advertPacket); err != nil {
 		return poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
+	if err := subs.Wait(ctx); err != nil {
 		return poop.Chain(err)
 	}
 
@@ -613,7 +613,7 @@ func (c *Conn) ImportContact(ctx context.Context, advertPacket []byte) error {
 func (c *Conn) ShareContact(ctx context.Context, key *PublicKey) error {
 	var err error
 
-	expect := expect(
+	subs := expect(
 		c.tx.Notifier(),
 		func(code NotificationCode, data []byte) bool {
 			switch code {
@@ -623,13 +623,13 @@ func (c *Conn) ShareContact(ctx context.Context, key *PublicKey) error {
 			}
 			return false
 		}, ResponseOk, ResponseErr)
-	defer expect.Unsubscribe()
+	defer subs.Unsubscribe()
 
 	if err := writeShareContactCommand(c.tx, key); err != nil {
 		return poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
+	if err := subs.Wait(ctx); err != nil {
 		return poop.Chain(err)
 	}
 
@@ -641,7 +641,7 @@ func (c *Conn) ExportPrivateKey(ctx context.Context) ([]byte, error) {
 	var privateKey [64]byte
 	var err error
 
-	expect := expect(
+	subs := expect(
 		c.tx.Notifier(),
 		func(code NotificationCode, data []byte) bool {
 			switch code {
@@ -657,13 +657,13 @@ func (c *Conn) ExportPrivateKey(ctx context.Context) ([]byte, error) {
 		ResponsePrivateKey,
 		ResponseDisabled,
 		ResponseErr)
-	defer expect.Unsubscribe()
+	defer subs.Unsubscribe()
 
 	if err := writeCommandCode(c.tx, CommandExportPrivateKey); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
+	if err := subs.Wait(ctx); err != nil {
 		return nil, poop.Chain(err)
 	}
 
@@ -672,39 +672,31 @@ func (c *Conn) ExportPrivateKey(ctx context.Context) ([]byte, error) {
 
 // ImportPrivateKey imports a private key into the device.
 func (c *Conn) ImportPrivateKey(ctx context.Context, privateKey []byte) error {
-	notifier := c.tx.Notifier()
-
 	var err error
 
-	ch := make(chan struct{})
-
-	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
-		close(ch)
-	})
-	defer unsubOk()
-
-	unsubDisabled := notifier.Subscribe(ResponseDisabled, func(data []byte) {
-		err = poop.New("private key is disabled")
-		close(ch)
-	})
-	defer unsubDisabled()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
+	subs := expect(
+		c.tx.Notifier(),
+		func(code NotificationCode, data []byte) bool {
+			switch code {
+			case ResponseOk:
+			case ResponseDisabled:
+				err = poop.New("private key is disabled")
+			case ResponseErr:
+				err = readError(data)
+			}
+			return false
+		}, ResponseOk, ResponseDisabled, ResponseErr)
+	defer subs.Unsubscribe()
 
 	if err := writeImportPrivateKeyCommand(c.tx, privateKey); err != nil {
 		return poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
+	if err := subs.Wait(ctx); err != nil {
+		return poop.Chain(err)
 	}
+
+	return err
 }
 
 // TODO(kellegous): This is not working on real devices currently. We seed the
@@ -893,15 +885,11 @@ func (c *Conn) GetSelfInfo(ctx context.Context) (*SelfInfoResponse, error) {
 
 // Sign signs the given data.
 func (c *Conn) Sign(ctx context.Context, data []byte) ([]byte, error) {
-	// TODO(kellegous): this needs to be tested.
-	notifier := c.tx.Notifier()
-
 	const chunkSize = 128
 	buf := bytes.NewReader(data)
 
 	var err error
 	var signature []byte
-	ch := make(chan struct{})
 
 	sendNextChunk := func() error {
 		var chunk [128]byte
@@ -917,66 +905,65 @@ func (c *Conn) Sign(ctx context.Context, data []byte) ([]byte, error) {
 		return nil
 	}
 
-	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
-		if buf.Len() > 0 {
-			err = sendNextChunk()
-			if err != nil {
-				close(ch)
-			}
-		} else {
-			err = writeCommandCode(c.tx, CommandSignFinish)
-		}
-	})
-	defer unsubOk()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
-
-	unsubSignStart := notifier.Subscribe(ResponseSignStart, func(data []byte) {
+	onSignStart := func(data []byte) error {
 		var signStartResponse SignStartResponse
-		err = signStartResponse.readFrom(bytes.NewReader(data))
-		if err != nil {
-			close(ch)
-			return
+		if err := signStartResponse.readFrom(bytes.NewReader(data)); err != nil {
+			return poop.Chain(err)
 		}
+		if buf.Len() > int(signStartResponse.MaxSignDataLen) {
+			return poop.New("data is too long")
+		}
+		if err := sendNextChunk(); err != nil {
+			return poop.Chain(err)
+		}
+		return nil
+	}
+	onOk := func() error {
+		if buf.Len() > 0 {
+			return poop.Chain(sendNextChunk())
+		}
+		if err := writeCommandCode(c.tx, CommandSignFinish); err != nil {
+			return poop.Chain(err)
+		}
+		return nil
+	}
 
-		if len(data) > int(signStartResponse.MaxSignDataLen) {
-			err = poop.New("data is too long")
-			close(ch)
-			return
-		}
-
-		err = sendNextChunk()
-		if err != nil {
-			close(ch)
-			return
-		}
-	})
-	defer unsubSignStart()
-
-	unsubSignature := notifier.Subscribe(ResponseSignature, func(data []byte) {
-		var res SignatureResponse
-		err = res.readFrom(bytes.NewReader(data))
-		if err != nil {
-			close(ch)
-			return
-		}
-		signature = res.Signature[:]
-		close(ch)
-	})
-	defer unsubSignature()
+	subs := expect(
+		c.tx.Notifier(),
+		func(code NotificationCode, data []byte) bool {
+			switch code {
+			case ResponseSignStart:
+				err = onSignStart(data)
+				return err == nil
+			case ResponseOk:
+				err = onOk()
+				return err == nil
+			case ResponseSignature:
+				var res SignatureResponse
+				err = res.readFrom(bytes.NewReader(data))
+				if err == nil {
+					signature = res.Signature[:]
+				}
+				return false
+			case ResponseErr:
+				err = readError(data)
+				return false
+			}
+			panic("unreachable")
+		},
+		ResponseSignStart,
+		ResponseOk,
+		ResponseSignature,
+		ResponseErr)
+	defer subs.Unsubscribe()
 
 	if err := writeCommandCode(c.tx, CommandSignStart); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return signature, err
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	if err := subs.Wait(ctx); err != nil {
+		return nil, poop.Chain(err)
 	}
+
+	return signature, err
 }
