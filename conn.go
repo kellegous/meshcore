@@ -638,41 +638,36 @@ func (c *Conn) ShareContact(ctx context.Context, key *PublicKey) error {
 
 // ExportPrivateKey exports the private key from the device.
 func (c *Conn) ExportPrivateKey(ctx context.Context) ([]byte, error) {
-	notifier := c.tx.Notifier()
-
 	var privateKey [64]byte
 	var err error
 
-	ch := make(chan struct{})
-
-	unsubPrivateKey := notifier.Subscribe(ResponsePrivateKey, func(data []byte) {
-		_, err = io.ReadFull(bytes.NewReader(data), privateKey[:])
-		close(ch)
-	})
-	defer unsubPrivateKey()
-
-	unsubDisabled := notifier.Subscribe(ResponseDisabled, func(data []byte) {
-		err = poop.New("private key is disabled")
-		close(ch)
-	})
-	defer unsubDisabled()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
+	expect := expect(
+		c.tx.Notifier(),
+		func(code NotificationCode, data []byte) bool {
+			switch code {
+			case ResponsePrivateKey:
+				_, err = io.ReadFull(bytes.NewReader(data), privateKey[:])
+			case ResponseDisabled:
+				err = poop.New("private key is disabled")
+			case ResponseErr:
+				err = readError(data)
+			}
+			return false
+		},
+		ResponsePrivateKey,
+		ResponseDisabled,
+		ResponseErr)
+	defer expect.Unsubscribe()
 
 	if err := writeCommandCode(c.tx, CommandExportPrivateKey); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return privateKey[:], err
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	if err := expect.Wait(ctx); err != nil {
+		return nil, poop.Chain(err)
 	}
+
+	return privateKey[:], err
 }
 
 // ImportPrivateKey imports a private key into the device.
