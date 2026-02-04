@@ -582,33 +582,31 @@ func (c *Conn) ExportContact(ctx context.Context, key *PublicKey) ([]byte, error
 
 // ImportContact imports a contact into the device.
 func (c *Conn) ImportContact(ctx context.Context, advertPacket []byte) error {
-	notifier := c.tx.Notifier()
-
 	var err error
 
-	ch := make(chan struct{})
-
-	unsubOk := notifier.Subscribe(ResponseOk, func(data []byte) {
-		close(ch)
-	})
-	defer unsubOk()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
+	expect := expect(
+		c.tx.Notifier(),
+		func(code NotificationCode, data []byte) bool {
+			switch code {
+			case ResponseOk:
+			case ResponseErr:
+				err = readError(data)
+			}
+			return false
+		},
+		ResponseOk,
+		ResponseErr)
+	defer expect.Unsubscribe()
 
 	if err := writeImportContactCommand(c.tx, advertPacket); err != nil {
 		return poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
+	if err := expect.Wait(ctx); err != nil {
+		return poop.Chain(err)
 	}
+
+	return err
 }
 
 // ShareContact shares a contact with the device.

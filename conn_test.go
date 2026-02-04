@@ -1253,3 +1253,49 @@ func TestSign(t *testing.T) {
 		controller.Wait()
 	})
 }
+
+func TestImportContact(t *testing.T) {
+	advertPacket := fakeBytes(100, func(i int) byte {
+		return byte(i + 1)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.ImportContact(t.Context(), advertPacket); err != nil {
+				t.Fatal(err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandImportContact),
+			Bytes(advertPacket...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseOk, nil)
+		controller.Wait()
+	})
+
+	t.Run("error", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.ImportContact(t.Context(), advertPacket); err == nil || err.Error() != "response error: 5 (file io error)" {
+				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandImportContact),
+			Bytes(advertPacket...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseErr,
+			BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+
+		controller.Wait()
+	})
+}
