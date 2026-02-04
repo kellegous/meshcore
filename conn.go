@@ -343,35 +343,33 @@ func (c *Conn) GetChannel(
 	ctx context.Context,
 	idx uint8,
 ) (*ChannelInfo, error) {
-	notifier := c.tx.Notifier()
-
 	var channel ChannelInfo
 	var err error
 
-	ch := make(chan struct{})
-
-	unsubChannel := notifier.Subscribe(ResponseChannelInfo, func(data []byte) {
-		err = channel.readFrom(bytes.NewReader(data))
-		close(ch)
-	})
-	defer unsubChannel()
-
-	unsubErr := notifier.Subscribe(ResponseErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
+	expect := expect(
+		c.tx.Notifier(),
+		func(code NotificationCode, data []byte) bool {
+			switch code {
+			case ResponseChannelInfo:
+				err = channel.readFrom(bytes.NewReader(data))
+			case ResponseErr:
+				err = readError(data)
+			}
+			return false
+		},
+		ResponseChannelInfo,
+		ResponseErr)
+	defer expect.Unsubscribe()
 
 	if err := writeGetChannelCommand(c.tx, idx); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	select {
-	case <-ch:
-		return &channel, err
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	if err := expect.Wait(ctx); err != nil {
+		return nil, poop.Chain(err)
 	}
+
+	return &channel, err
 }
 
 // GetChannels returns the list of all channels.
