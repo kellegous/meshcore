@@ -610,7 +610,7 @@ func (c *Conn) ImportContact(ctx context.Context, advertPacket []byte) error {
 }
 
 // ShareContact shares a contact with the device.
-func (c *Conn) ShareContact(ctx context.Context, key *PublicKey) error {
+func (c *Conn) ShareContact(ctx context.Context, key PublicKey) error {
 	var err error
 
 	subs := expect(
@@ -625,7 +625,7 @@ func (c *Conn) ShareContact(ctx context.Context, key *PublicKey) error {
 		}, ResponseOk, ResponseErr)
 	defer subs.Unsubscribe()
 
-	if err := writeShareContactCommand(c.tx, key); err != nil {
+	if err := writeShareContactCommand(c.tx, &key); err != nil {
 		return poop.Chain(err)
 	}
 
@@ -701,7 +701,7 @@ func (c *Conn) ImportPrivateKey(ctx context.Context, privateKey []byte) error {
 
 // TODO(kellegous): This is not working on real devices currently. We seed the
 // SentResponse arrive, but we never get a PushStatusResponse.
-func (c *Conn) GetStatus(ctx context.Context, key *PublicKey) (*StatusResponse, error) {
+func (c *Conn) GetStatus(ctx context.Context, key PublicKey) (*StatusResponse, error) {
 	var status StatusResponse
 	var err error
 
@@ -723,7 +723,7 @@ func (c *Conn) GetStatus(ctx context.Context, key *PublicKey) (*StatusResponse, 
 		ResponseErr)
 	defer expect.Unsubscribe()
 
-	if err := writeGetStatusCommand(c.tx, key); err != nil {
+	if err := writeGetStatusCommand(c.tx, &key); err != nil {
 		return nil, poop.Chain(err)
 	}
 
@@ -822,7 +822,7 @@ func (c *Conn) SetDeviceTime(ctx context.Context, time time.Time) error {
 }
 
 // ResetPath resets the path for the given contact key.
-func (c *Conn) ResetPath(ctx context.Context, key *PublicKey) error {
+func (c *Conn) ResetPath(ctx context.Context, key PublicKey) error {
 	var err error
 
 	expect := expect(
@@ -839,7 +839,7 @@ func (c *Conn) ResetPath(ctx context.Context, key *PublicKey) error {
 		ResponseErr)
 	defer expect.Unsubscribe()
 
-	if err := writeResetPathCommand(c.tx, key); err != nil {
+	if err := writeResetPathCommand(c.tx, &key); err != nil {
 		return poop.Chain(err)
 	}
 

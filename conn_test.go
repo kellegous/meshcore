@@ -63,10 +63,10 @@ func (c *Controller) Wait() {
 	<-c.tx.done
 }
 
-func fakePublicKey(id byte) *PublicKey {
+func fakePublicKey(id byte) PublicKey {
 	key := [32]byte{}
 	key[0] = id
-	return &PublicKey{key: key}
+	return PublicKey{key: key}
 }
 
 func fakeBytes(n int, fn func(i int) byte) []byte {
@@ -87,7 +87,7 @@ func describe(v any) string {
 
 func TestGetContacts(t *testing.T) {
 	contactA := &Contact{
-		PublicKey:  *fakePublicKey(1),
+		PublicKey:  fakePublicKey(1),
 		Type:       1,
 		Flags:      2,
 		OutPath:    []byte{1, 2, 3},
@@ -98,7 +98,7 @@ func TestGetContacts(t *testing.T) {
 		LastMod:    time.Unix(101, 0),
 	}
 	contactB := &Contact{
-		PublicKey:  *fakePublicKey(2),
+		PublicKey:  fakePublicKey(2),
 		Type:       1,
 		Flags:      2,
 		OutPath:    []byte{1, 2, 3},
@@ -176,7 +176,8 @@ func TestRemoveContact(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if err := conn.RemoveContact(t.Context(), key); err != nil {
+			// todo: key should be a value?
+			if err := conn.RemoveContact(t.Context(), &key); err != nil {
 				t.Fatal(err)
 			}
 		})
@@ -196,7 +197,7 @@ func TestRemoveContact(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if err := conn.RemoveContact(t.Context(), key); err == nil || err.Error() != "response error: 5 (file io error)" {
+			if err := conn.RemoveContact(t.Context(), &key); err == nil || err.Error() != "response error: 5 (file io error)" {
 				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
 			}
 		})
@@ -323,7 +324,7 @@ func TestSendTextMessage(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			sr, err := conn.SendTextMessage(t.Context(), recipient, message, textType)
+			sr, err := conn.SendTextMessage(t.Context(), &recipient, message, textType)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -365,7 +366,7 @@ func TestGetTelemetry(t *testing.T) {
 	}
 
 	controller := DoCommand(func(conn *Conn) {
-		telemetry, err := conn.GetTelemetry(t.Context(), key)
+		telemetry, err := conn.GetTelemetry(t.Context(), &key)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -714,8 +715,9 @@ func TestExportContact(t *testing.T) {
 	})
 
 	t.Run("non-self contact", func(t *testing.T) {
+		key := fakePublicKey(42)
 		controller := DoCommand(func(conn *Conn) {
-			advertPacket, err := conn.ExportContact(t.Context(), fakePublicKey(42))
+			advertPacket, err := conn.ExportContact(t.Context(), &key)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -727,7 +729,7 @@ func TestExportContact(t *testing.T) {
 		if err := ValidateBytes(
 			controller.Recv(),
 			Command(CommandExportContact),
-			Bytes(fakePublicKey(42).Bytes()...),
+			Bytes(key.Bytes()...),
 		); err != nil {
 			t.Fatal(err)
 		}
@@ -1289,6 +1291,85 @@ func TestImportContact(t *testing.T) {
 			controller.Recv(),
 			Command(CommandImportContact),
 			Bytes(advertPacket...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseErr,
+			BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+
+		controller.Wait()
+	})
+}
+
+func TestGetSelfInfo(t *testing.T) {
+	expected := &SelfInfoResponse{
+		Type:              1,
+		TxPower:           2,
+		MaxTxPower:        3,
+		PublicKey:         fakePublicKey(42),
+		AdvLat:            1.0,
+		AdvLon:            2.0,
+		ManualAddContacts: 4,
+		RadioFreq:         5,
+		RadioBw:           6,
+		RadioSf:           7,
+		RadioCr:           8,
+		Name:              "testname",
+	}
+
+	t.Run("success", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			selfInfo, err := conn.GetSelfInfo(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(selfInfo, expected) {
+				t.Fatalf("expected %s, got %s", describe(expected), describe(selfInfo))
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandAppStart),
+			Byte(1),
+			Bytes(0, 0, 0, 0, 0, 0),
+			String("test"),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseSelfInfo, BytesFrom(
+			Byte(byte(expected.Type)),
+			Byte(expected.TxPower),
+			Byte(expected.MaxTxPower),
+			Bytes(expected.PublicKey.Bytes()...),
+			LatLon(expected.AdvLat, expected.AdvLon, binary.LittleEndian),
+			Bytes(0, 0, 0),
+			Byte(expected.ManualAddContacts),
+			Uint32(expected.RadioFreq, binary.LittleEndian),
+			Uint32(expected.RadioBw, binary.LittleEndian),
+			Byte(expected.RadioSf),
+			Byte(expected.RadioCr),
+			String(expected.Name),
+		))
+
+		controller.Wait()
+	})
+
+	t.Run("error", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if _, err := conn.GetSelfInfo(t.Context()); err == nil || err.Error() != "response error: 5 (file io error)" {
+				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandAppStart),
+			Byte(1),
+			Bytes(0, 0, 0, 0, 0, 0),
+			String("test"),
 		); err != nil {
 			t.Fatal(err)
 		}

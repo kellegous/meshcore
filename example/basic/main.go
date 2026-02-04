@@ -205,7 +205,7 @@ func run(ctx context.Context) error {
 			return poop.New("no contacts found")
 		}
 		contact := contacts[0]
-		status, err := conn.GetStatus(ctx, &contact.PublicKey)
+		status, err := conn.GetStatus(ctx, contact.PublicKey)
 		if err != nil {
 			return poop.Chain(err)
 		}
