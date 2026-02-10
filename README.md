@@ -8,7 +8,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
 **In Progress**
 
 ```
-|███████████████████████████████████████▏          | 78%
+|████████████████████████████████████████▌         | 81%
 ```
 
 ## TODO:
@@ -16,7 +16,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
 
  - [ ] Transports
  
-   - [ ] BLE
+   - [x] BLE
  
    - [ ] USB/Serial
  

@@ -220,6 +220,7 @@ var sections = Sections{
 		Task: []Task{
 			{
 				Title: "BLE",
+				Done:  true,
 			},
 			{
 				Title: "USB/Serial",
