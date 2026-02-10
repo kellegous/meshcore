@@ -967,3 +967,43 @@ func (c *Conn) Sign(ctx context.Context, data []byte) ([]byte, error) {
 
 	return signature, err
 }
+
+func (c *Conn) SetRadioParams(
+	ctx context.Context,
+	radioFreq float64, // how is this represented?
+	radioBw float64,
+	radioSf byte,
+	radioCr byte,
+) error {
+	var err error
+
+	expect := expect(
+		c.tx.Notifier(),
+		func(code NotificationCode, data []byte) bool {
+			switch code {
+			case ResponseOk:
+			case ResponseErr:
+				err = readError(data)
+			}
+			return false
+		},
+		ResponseOk,
+		ResponseErr)
+	defer expect.Unsubscribe()
+
+	if err := writeSetRadioParamsCommand(
+		c.tx,
+		uint32(radioFreq*1000),
+		uint32(radioBw*1000),
+		radioSf,
+		radioCr,
+	); err != nil {
+		return poop.Chain(err)
+	}
+
+	if err := expect.Wait(ctx); err != nil {
+		return poop.Chain(err)
+	}
+
+	return err
+}

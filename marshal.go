@@ -910,3 +910,27 @@ func writeCommandAppStartCommand(w io.Writer) error {
 	}
 	return nil
 }
+
+func writeSetRadioParamsCommand(w io.Writer, radioFreq uint32, radioBw uint32, radioSf byte, radioCr byte) error {
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandSetRadioParams); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Write(&buf, binary.LittleEndian, radioFreq); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Write(&buf, binary.LittleEndian, radioBw); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Write(&buf, binary.LittleEndian, radioSf); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Write(&buf, binary.LittleEndian, radioCr); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}

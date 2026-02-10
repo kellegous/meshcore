@@ -96,6 +96,7 @@ var sections = Sections{
 			},
 			{
 				Title: "setRadioParams",
+				Done:  true,
 			},
 			{
 				Title: "getContacts",

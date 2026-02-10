@@ -1380,3 +1380,53 @@ func TestGetSelfInfo(t *testing.T) {
 		controller.Wait()
 	})
 }
+
+func TestSetRadioParams(t *testing.T) {
+	radioFreq := 910.525 // Is this in MHz?
+	radioBw := 250.0     // This is in kHz
+	radioSf := byte(7)
+	radioCr := byte(5)
+
+	t.Run("success", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.SetRadioParams(t.Context(), radioFreq, radioBw, radioSf, radioCr); err != nil {
+				t.Fatal(err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSetRadioParams),
+			Uint32(uint32(radioFreq*1000), binary.LittleEndian),
+			Uint32(uint32(radioBw*1000), binary.LittleEndian),
+			Byte(radioSf),
+			Byte(radioCr),
+		); err != nil {
+			t.Fatal(err)
+		}
+		controller.Notify(ResponseOk, nil)
+		controller.Wait()
+	})
+
+	t.Run("error", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.SetRadioParams(t.Context(), radioFreq, radioBw, radioSf, radioCr); err == nil || err.Error() != "response error: 5 (file io error)" {
+				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSetRadioParams),
+			Uint32(uint32(radioFreq*1000), binary.LittleEndian),
+			Uint32(uint32(radioBw*1000), binary.LittleEndian),
+			Byte(radioSf),
+			Byte(radioCr),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+		controller.Wait()
+	})
+}
