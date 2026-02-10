@@ -202,7 +202,7 @@ var sections = Sections{
 			},
 			{
 				Title: "sign",
-				Done:  true, // TODO(kellegous): needs a test.
+				Done:  true,
 			},
 			{
 				Title: "tracePath",
