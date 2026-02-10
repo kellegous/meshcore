@@ -213,6 +213,45 @@ var sections = Sections{
 			{
 				Title: "getNeighbors",
 			},
+			{
+				Title: "Push Advert",
+			},
+			{
+				Title: "Push PathUpdated",
+			},
+			{
+				Title: "Push SendConfirmed",
+			},
+			{
+				Title: "Push MsgWaiting",
+			},
+			{
+				Title: "Push RawData",
+			},
+			{
+				Title: "Push LoginSuccess",
+			},
+			{
+				Title: "Push LoginFail",
+			},
+			{
+				Title: "Push StatusResponse",
+			},
+			{
+				Title: "Push LogRxData",
+			},
+			{
+				Title: "Push TraceData",
+			},
+			{
+				Title: "Push NewAdvert",
+			},
+			{
+				Title: "Push TelemetryResponse",
+			},
+			{
+				Title: "Push BinaryResponse",
+			},
 		},
 	},
 	{
