@@ -373,8 +373,8 @@ type SelfInfoResponse struct {
 	AdvLat            float64
 	AdvLon            float64
 	ManualAddContacts byte
-	RadioFreq         uint32
-	RadioBw           uint32
+	RadioFreq         float64
+	RadioBw           float64
 	RadioSf           byte
 	RadioCr           byte
 	Name              string
@@ -405,12 +405,15 @@ func (s *SelfInfoResponse) readFrom(r io.Reader) error {
 	if err := binary.Read(r, binary.LittleEndian, &s.ManualAddContacts); err != nil {
 		return poop.Chain(err)
 	}
-	if err := binary.Read(r, binary.LittleEndian, &s.RadioFreq); err != nil {
+	var freq, bw uint32
+	if err := binary.Read(r, binary.LittleEndian, &freq); err != nil {
 		return poop.Chain(err)
 	}
-	if err := binary.Read(r, binary.LittleEndian, &s.RadioBw); err != nil {
+	s.RadioFreq = float64(freq) / 1000
+	if err := binary.Read(r, binary.LittleEndian, &bw); err != nil {
 		return poop.Chain(err)
 	}
+	s.RadioBw = float64(bw) / 1000
 	if err := binary.Read(r, binary.LittleEndian, &s.RadioSf); err != nil {
 		return poop.Chain(err)
 	}

@@ -1311,8 +1311,8 @@ func TestGetSelfInfo(t *testing.T) {
 		AdvLat:            1.0,
 		AdvLon:            2.0,
 		ManualAddContacts: 4,
-		RadioFreq:         5,
-		RadioBw:           6,
+		RadioFreq:         910.525,
+		RadioBw:           62.5,
 		RadioSf:           7,
 		RadioCr:           8,
 		Name:              "testname",
@@ -1347,8 +1347,8 @@ func TestGetSelfInfo(t *testing.T) {
 			LatLon(expected.AdvLat, expected.AdvLon, binary.LittleEndian),
 			Bytes(0, 0, 0),
 			Byte(expected.ManualAddContacts),
-			Uint32(expected.RadioFreq, binary.LittleEndian),
-			Uint32(expected.RadioBw, binary.LittleEndian),
+			Uint32(uint32(expected.RadioFreq*1000), binary.LittleEndian),
+			Uint32(uint32(expected.RadioBw*1000), binary.LittleEndian),
 			Byte(expected.RadioSf),
 			Byte(expected.RadioCr),
 			String(expected.Name),
@@ -1383,7 +1383,7 @@ func TestGetSelfInfo(t *testing.T) {
 
 func TestSetRadioParams(t *testing.T) {
 	radioFreq := 910.525 // Is this in MHz?
-	radioBw := 250.0     // This is in kHz
+	radioBw := 125.0     // This is in kHz
 	radioSf := byte(7)
 	radioCr := byte(5)
 

@@ -30,7 +30,8 @@ func run(ctx context.Context) error {
 		exportContact,
 		getStatus,
 		exportPrivateKey,
-		sign bool
+		sign,
+		getSelfInfo bool
 
 	flag.BoolVar(
 		&sendMessage,
@@ -97,6 +98,12 @@ func run(ctx context.Context) error {
 		"sign",
 		false,
 		"sign a message with the device",
+	)
+	flag.BoolVar(
+		&getSelfInfo,
+		"get-self-info",
+		false,
+		"get the self information from the device",
 	)
 	flag.Parse()
 
@@ -241,6 +248,13 @@ func run(ctx context.Context) error {
 		} else {
 			fmt.Printf("signature is invalid\n")
 		}
+	}
+	if getSelfInfo {
+		selfInfo, err := conn.GetSelfInfo(ctx)
+		if err != nil {
+			return poop.Chain(err)
+		}
+		fmt.Printf("self info: %+v\n", selfInfo)
 	}
 	return nil
 }
