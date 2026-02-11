@@ -1575,3 +1575,43 @@ func TestSetTXPower(t *testing.T) {
 		controller.Wait()
 	})
 }
+
+func TestSetOtherParams(t *testing.T) {
+	manualAddContacts := true
+
+	t.Run("success", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.SetOtherParams(t.Context(), manualAddContacts); err != nil {
+				t.Fatal(err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSetOtherParams),
+			Bool(manualAddContacts),
+		); err != nil {
+			t.Fatal(err)
+		}
+		controller.Notify(ResponseOk, nil)
+		controller.Wait()
+	})
+
+	t.Run("error", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.SetOtherParams(t.Context(), manualAddContacts); err == nil || err.Error() != "response error: 5 (file io error)" {
+				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSetOtherParams),
+			Bool(manualAddContacts),
+		); err != nil {
+			t.Fatal(err)
+		}
+		controller.Notify(ResponseErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+		controller.Wait()
+	})
+}

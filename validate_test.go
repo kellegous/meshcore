@@ -70,6 +70,13 @@ func Byte(b byte) LiteralPattern {
 	}
 }
 
+func Bool(b bool) LiteralPattern {
+	return &fromBytes{
+		data: []byte{boolToByte(b)},
+		desc: fmt.Sprintf("bool(%t)", b),
+	}
+}
+
 func Command(c CommandCode) LiteralPattern {
 	return &fromBytes{
 		data: []byte{byte(c)},

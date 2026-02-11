@@ -8,7 +8,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
 **In Progress**
 
 ```
-|████████████████████████████████                  | 64%
+|█████████████████████████████████                 | 66%
 ```
 
 ## TODO:
@@ -105,7 +105,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
  
    - [x] setDeviceTime
  
-   - [ ] setOtherParams
+   - [x] setOtherParams
  
    - [x] setRadioParams
  

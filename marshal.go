@@ -991,3 +991,26 @@ func writeSetTXPowerCommand(w io.Writer, power byte) error {
 	}
 	return nil
 }
+
+func boolToByte(b bool) byte {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+func writeSetOtherParamsCommand(w io.Writer, manualAddContacts bool) error {
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandSetOtherParams); err != nil {
+		return poop.Chain(err)
+	}
+
+	if err := binary.Write(&buf, binary.LittleEndian, boolToByte(manualAddContacts)); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}

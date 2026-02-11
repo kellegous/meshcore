@@ -211,6 +211,7 @@ var sections = Sections{
 			},
 			{
 				Title: "setOtherParams",
+				Done:  true,
 			},
 			{
 				Title: "getNeighbors",
