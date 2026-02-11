@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/kellegous/poop"
 )
 
 type fakeTransport struct {
@@ -1628,9 +1630,8 @@ func TestSetOtherParams(t *testing.T) {
 	})
 }
 
-func SkipTestGetNeighbours(t *testing.T) {
+func TestGetNeighbours(t *testing.T) {
 	recipient := fakePublicKey(42)
-	offset := uint16(0)
 	orderBy := NeighborsOrderNewestToOldest
 	pubKeyPrefixLength := byte(6)
 	tag := uint32(1234567890)
@@ -1651,7 +1652,19 @@ func SkipTestGetNeighbours(t *testing.T) {
 		},
 	}
 
-	payload := BytesFrom(
+	reqPayload := []Pattern{
+		Command(CommandSendBinaryReq),
+		Bytes(recipient.Bytes()...),
+		Byte(byte(BinaryRequestTypeGetNeighbours)),
+		Byte(0),
+		Byte(10),
+		Uint16(0, binary.LittleEndian), // offset
+		Byte(byte(orderBy)),
+		Byte(pubKeyPrefixLength),
+		AnyBytes(4),
+	}
+
+	resPayload := BytesFrom(
 		Uint16(2, binary.LittleEndian),
 		Uint16(2, binary.LittleEndian),
 		Bytes(expected[0].PublicKeyPrefix...),
@@ -1667,12 +1680,12 @@ func SkipTestGetNeighbours(t *testing.T) {
 			neighbours, err := conn.GetNeighbours(
 				t.Context(),
 				recipient,
-				uint8(len(expected)),
-				offset,
+				10, // count
+				0,  // offset
 				orderBy,
 				pubKeyPrefixLength)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatal(poop.Flatten(err))
 			}
 			if !reflect.DeepEqual(neighbours, expected) {
 				t.Fatalf("expected %s, got %s", describe(expected), describe(neighbours))
@@ -1681,9 +1694,7 @@ func SkipTestGetNeighbours(t *testing.T) {
 
 		if err := ValidateBytes(
 			controller.Recv(),
-			Command(CommandSendBinaryReq),
-			Bytes(recipient.Bytes()...),
-			Bytes(payload...),
+			reqPayload...,
 		); err != nil {
 			t.Fatal(err)
 		}
@@ -1697,7 +1708,7 @@ func SkipTestGetNeighbours(t *testing.T) {
 		controller.Notify(PushBinaryResponse, BytesFrom(
 			Byte(0),
 			Uint32(tag, binary.LittleEndian),
-			Bytes(payload...),
+			Bytes(resPayload...),
 		))
 
 		controller.Wait()
