@@ -1430,3 +1430,104 @@ func TestSetRadioParams(t *testing.T) {
 		controller.Wait()
 	})
 }
+
+func TestSendBinaryRequest(t *testing.T) {
+	recipient := fakePublicKey(42)
+	payload := fakeBytes(100, func(i int) byte {
+		return byte(i + 1)
+	})
+	tag := uint32(1234567890)
+
+	t.Run("success", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.SendBinaryRequest(t.Context(), fakePublicKey(42), payload); err != nil {
+				t.Fatal(err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSendBinaryReq),
+			Bytes(recipient.Bytes()...),
+			Bytes(payload...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		// SentResponse
+		controller.Notify(ResponseSent, BytesFrom(
+			Byte(0),
+			Uint32(tag, binary.LittleEndian),
+			Uint32(1000, binary.LittleEndian),
+		))
+
+		// BinaryResponse
+		controller.Notify(PushBinaryResponse, BytesFrom(
+			Byte(0),
+			Uint32(tag, binary.LittleEndian),
+			Bytes(payload...),
+		))
+
+		controller.Wait()
+	})
+
+	t.Run("error", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.SendBinaryRequest(t.Context(), fakePublicKey(42), payload); err == nil || err.Error() != "response error: 5 (file io error)" {
+				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSendBinaryReq),
+			Bytes(recipient.Bytes()...),
+			Bytes(payload...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+
+		controller.Wait()
+	})
+
+	t.Run("errant tag", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.SendBinaryRequest(t.Context(), fakePublicKey(42), payload); err != nil {
+				t.Fatal(err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSendBinaryReq),
+			Bytes(recipient.Bytes()...),
+			Bytes(payload...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		// SentResponse
+		controller.Notify(ResponseSent, BytesFrom(
+			Byte(0),
+			Uint32(tag, binary.LittleEndian),
+			Uint32(1000, binary.LittleEndian),
+		))
+
+		controller.Notify(PushBinaryResponse, BytesFrom(
+			Byte(0),
+			Uint32(tag+1, binary.LittleEndian), // errant tag
+			Bytes(payload...),
+		))
+
+		// BinaryResponse
+		controller.Notify(PushBinaryResponse, BytesFrom(
+			Byte(0),
+			Uint32(tag, binary.LittleEndian),
+			Bytes(payload...),
+		))
+
+		controller.Wait()
+	})
+}

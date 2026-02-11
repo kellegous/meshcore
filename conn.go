@@ -968,6 +968,7 @@ func (c *Conn) Sign(ctx context.Context, data []byte) ([]byte, error) {
 	return signature, err
 }
 
+// SetRadioParams sets the radio parameters.
 func (c *Conn) SetRadioParams(
 	ctx context.Context,
 	radioFreq float64, // how is this represented?
@@ -998,6 +999,59 @@ func (c *Conn) SetRadioParams(
 		radioSf,
 		radioCr,
 	); err != nil {
+		return poop.Chain(err)
+	}
+
+	if err := expect.Wait(ctx); err != nil {
+		return poop.Chain(err)
+	}
+
+	return err
+}
+
+// SendBinaryRequest sends a binary request to the given recipient.
+func (c *Conn) SendBinaryRequest(
+	ctx context.Context,
+	recipient PublicKey,
+	payload []byte,
+) error {
+	var err error
+
+	var tag uint32
+
+	expect := expect(
+		c.tx.Notifier(),
+		func(code NotificationCode, data []byte) bool {
+			switch code {
+			case ResponseSent:
+				var sr SentResponse
+				err = sr.readFrom(bytes.NewReader(data))
+				if err == nil {
+					tag = sr.ExpectedAckCRC
+				}
+				return err == nil
+			case PushBinaryResponse:
+				var binaryResponse BinaryResponse
+				err = binaryResponse.readFrom(bytes.NewReader(data))
+				if err != nil {
+					return false
+				}
+				if binaryResponse.Tag != tag {
+					return true
+				}
+				return false
+			case ResponseErr:
+				err = readError(data)
+				return false
+			}
+			return false
+		},
+		PushBinaryResponse,
+		ResponseSent,
+		ResponseErr)
+	defer expect.Unsubscribe()
+
+	if err := writeSendBinaryRequestCommand(c.tx, recipient, payload); err != nil {
 		return poop.Chain(err)
 	}
 

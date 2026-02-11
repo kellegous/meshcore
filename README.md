@@ -8,7 +8,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
 **In Progress**
 
 ```
-|██████████████████████████████                    | 60%
+|███████████████████████████████                   | 62%
 ```
 
 ## TODO:
@@ -89,7 +89,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
  
    - [x] sendAdvert
  
-   - [ ] sendBinaryRequest
+   - [x] sendBinaryRequest
  
    - [x] sendChannelTextMessage
  

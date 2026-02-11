@@ -183,6 +183,7 @@ var sections = Sections{
 			},
 			{
 				Title: "sendBinaryRequest",
+				Done:  true,
 			},
 			{
 				Title: "getChannel",

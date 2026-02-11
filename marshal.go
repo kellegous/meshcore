@@ -427,6 +427,27 @@ func (s *SelfInfoResponse) readFrom(r io.Reader) error {
 	return nil
 }
 
+type BinaryResponse struct {
+	Tag          uint32
+	ResponseData []byte
+}
+
+func (b *BinaryResponse) readFrom(r io.Reader) error {
+	var reserved byte
+	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &b.Tag); err != nil {
+		return poop.Chain(err)
+	}
+	var err error
+	b.ResponseData, err = io.ReadAll(r)
+	if err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
 func readCString(r io.Reader, maxLen int) (string, error) {
 	buf := make([]byte, maxLen)
 	if _, err := io.ReadFull(r, buf[:]); err != nil {
@@ -929,6 +950,24 @@ func writeSetRadioParamsCommand(w io.Writer, radioFreq uint32, radioBw uint32, r
 		return poop.Chain(err)
 	}
 	if err := binary.Write(&buf, binary.LittleEndian, radioCr); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
+func writeSendBinaryRequestCommand(w io.Writer, recipient PublicKey, payload []byte) error {
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandSendBinaryReq); err != nil {
+		return poop.Chain(err)
+	}
+	if err := recipient.writeTo(&buf); err != nil {
+		return poop.Chain(err)
+	}
+	if _, err := buf.Write(payload); err != nil {
 		return poop.Chain(err)
 	}
 
