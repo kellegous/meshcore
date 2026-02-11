@@ -976,3 +976,18 @@ func writeSendBinaryRequestCommand(w io.Writer, recipient PublicKey, payload []b
 	}
 	return nil
 }
+
+func writeSetTXPowerCommand(w io.Writer, power byte) error {
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandSetTxPower); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Write(&buf, binary.LittleEndian, power); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}

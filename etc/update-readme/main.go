@@ -93,6 +93,7 @@ var sections = Sections{
 			},
 			{
 				Title: "setTxPower",
+				Done:  true,
 			},
 			{
 				Title: "setRadioParams",

@@ -1061,3 +1061,32 @@ func (c *Conn) SendBinaryRequest(
 
 	return err
 }
+
+// SetTXPower sets the TX power.
+func (c *Conn) SetTXPower(ctx context.Context, power byte) error {
+	var err error
+
+	expect := expect(
+		c.tx.Notifier(),
+		func(code NotificationCode, data []byte) bool {
+			switch code {
+			case ResponseOk:
+			case ResponseErr:
+				err = readError(data)
+			}
+			return false
+		},
+		ResponseOk,
+		ResponseErr)
+	defer expect.Unsubscribe()
+
+	if err := writeSetTXPowerCommand(c.tx, power); err != nil {
+		return poop.Chain(err)
+	}
+
+	if err := expect.Wait(ctx); err != nil {
+		return poop.Chain(err)
+	}
+
+	return err
+}
