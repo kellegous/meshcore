@@ -55,3 +55,12 @@ const (
 	SelfAdvertTypeZeroHop SelfAdvertType = 0
 	SelfAdvertTypeFlood   SelfAdvertType = 1
 )
+
+type BinaryRequestType byte
+
+const (
+	BinaryRequestTypeGetTelemetryData BinaryRequestType = 0x03
+	BinaryRequestTypeGetAvgMinMax     BinaryRequestType = 0x04
+	BinaryRequestTypeGetAccessList    BinaryRequestType = 0x05
+	BinaryRequestTypeGetNeighbours    BinaryRequestType = 0x06
+)

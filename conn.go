@@ -3,6 +3,7 @@ package meshcore
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -1014,7 +1015,8 @@ func (c *Conn) SendBinaryRequest(
 	ctx context.Context,
 	recipient PublicKey,
 	payload []byte,
-) error {
+) (*BinaryResponse, error) {
+	var binaryResponse BinaryResponse
 	var err error
 
 	var tag uint32
@@ -1031,7 +1033,6 @@ func (c *Conn) SendBinaryRequest(
 				}
 				return err == nil
 			case PushBinaryResponse:
-				var binaryResponse BinaryResponse
 				err = binaryResponse.readFrom(bytes.NewReader(data))
 				if err != nil {
 					return false
@@ -1052,14 +1053,14 @@ func (c *Conn) SendBinaryRequest(
 	defer expect.Unsubscribe()
 
 	if err := writeSendBinaryRequestCommand(c.tx, recipient, payload); err != nil {
-		return poop.Chain(err)
+		return nil, poop.Chain(err)
 	}
 
 	if err := expect.Wait(ctx); err != nil {
-		return poop.Chain(err)
+		return nil, poop.Chain(err)
 	}
 
-	return err
+	return &binaryResponse, err
 }
 
 // SetTXPower sets the TX power.
@@ -1118,4 +1119,73 @@ func (c *Conn) SetOtherParams(ctx context.Context, manualAddContacts bool) error
 	}
 
 	return err
+}
+
+type NeighborsOrder byte
+
+const (
+	NeighborsOrderNewestToOldest     NeighborsOrder = 0
+	NeighborsOrderOldestToNewest     NeighborsOrder = 1
+	NeighborsOrderStrongestToWeakest NeighborsOrder = 2
+	NeighborsOrderWeakestToStrongest NeighborsOrder = 3
+)
+
+func (c *Conn) GetNeighbours(
+	ctx context.Context,
+	recipient PublicKey,
+	count uint8,
+	offset uint16,
+	orderBy NeighborsOrder,
+	pubKeyPrefixLength byte,
+) ([]*Neighbour, error) {
+	var payload bytes.Buffer
+	if err := binary.Write(&payload, binary.LittleEndian, byte(BinaryRequestTypeGetNeighbours)); err != nil {
+		return nil, poop.Chain(err)
+	}
+	// request_version=0
+	if err := binary.Write(&payload, binary.LittleEndian, byte(0)); err != nil {
+		return nil, poop.Chain(err)
+	}
+	if err := binary.Write(&payload, binary.LittleEndian, count); err != nil {
+		return nil, poop.Chain(err)
+	}
+	if err := binary.Write(&payload, binary.LittleEndian, offset); err != nil {
+		return nil, poop.Chain(err)
+	}
+	if err := binary.Write(&payload, binary.LittleEndian, byte(orderBy)); err != nil {
+		return nil, poop.Chain(err)
+	}
+	if err := binary.Write(&payload, binary.LittleEndian, pubKeyPrefixLength); err != nil {
+		return nil, poop.Chain(err)
+	}
+	// random blob (help hash)
+	if _, err := io.CopyN(&payload, rand.Reader, 4); err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	res, err := c.SendBinaryRequest(ctx, recipient, payload.Bytes())
+	if err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	buf := bytes.NewBuffer(res.ResponseData)
+	var totalNeighboursCount uint16
+	if err := binary.Read(buf, binary.LittleEndian, &totalNeighboursCount); err != nil {
+		return nil, poop.Chain(err)
+	}
+	var resultsCount uint16
+	if err := binary.Read(buf, binary.LittleEndian, &resultsCount); err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	neighbours := make([]*Neighbour, 0, resultsCount)
+	for i := 0; i < int(resultsCount); i++ {
+		var neighbour Neighbour
+		if err := neighbour.readFrom(buf, pubKeyPrefixLength); err != nil {
+			return nil, poop.Chain(err)
+		}
+		neighbours = append(neighbours, &neighbour)
+	}
+
+	return neighbours, nil
 }

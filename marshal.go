@@ -448,6 +448,28 @@ func (b *BinaryResponse) readFrom(r io.Reader) error {
 	return nil
 }
 
+type Neighbour struct {
+	PublicKeyPrefix []byte
+	HeardSecondsAgo uint32
+	Snr             float64
+}
+
+func (n *Neighbour) readFrom(r io.Reader, pubKeyPrefixLength byte) error {
+	n.PublicKeyPrefix = make([]byte, pubKeyPrefixLength)
+	if _, err := io.ReadFull(r, n.PublicKeyPrefix); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &n.HeardSecondsAgo); err != nil {
+		return poop.Chain(err)
+	}
+	var snr int8
+	if err := binary.Read(r, binary.LittleEndian, &snr); err != nil {
+		return poop.Chain(err)
+	}
+	n.Snr = float64(snr) / 4
+	return nil
+}
+
 func readCString(r io.Reader, maxLen int) (string, error) {
 	buf := make([]byte, maxLen)
 	if _, err := io.ReadFull(r, buf[:]); err != nil {

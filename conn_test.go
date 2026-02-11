@@ -1437,11 +1437,19 @@ func TestSendBinaryRequest(t *testing.T) {
 		return byte(i + 1)
 	})
 	tag := uint32(1234567890)
+	expected := &BinaryResponse{
+		Tag:          tag,
+		ResponseData: payload,
+	}
 
 	t.Run("success", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if err := conn.SendBinaryRequest(t.Context(), fakePublicKey(42), payload); err != nil {
+			res, err := conn.SendBinaryRequest(t.Context(), fakePublicKey(42), payload)
+			if err != nil {
 				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(res, expected) {
+				t.Fatalf("expected %s, got %s", describe(expected), describe(res))
 			}
 		})
 
@@ -1473,7 +1481,7 @@ func TestSendBinaryRequest(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if err := conn.SendBinaryRequest(t.Context(), fakePublicKey(42), payload); err == nil || err.Error() != "response error: 5 (file io error)" {
+			if _, err := conn.SendBinaryRequest(t.Context(), fakePublicKey(42), payload); err == nil || err.Error() != "response error: 5 (file io error)" {
 				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
 			}
 		})
@@ -1494,8 +1502,12 @@ func TestSendBinaryRequest(t *testing.T) {
 
 	t.Run("errant tag", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if err := conn.SendBinaryRequest(t.Context(), fakePublicKey(42), payload); err != nil {
+			res, err := conn.SendBinaryRequest(t.Context(), fakePublicKey(42), payload)
+			if err != nil {
 				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(res, expected) {
+				t.Fatalf("expected %s, got %s", describe(expected), describe(res))
 			}
 		})
 
@@ -1612,6 +1624,82 @@ func TestSetOtherParams(t *testing.T) {
 			t.Fatal(err)
 		}
 		controller.Notify(ResponseErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+		controller.Wait()
+	})
+}
+
+func SkipTestGetNeighbours(t *testing.T) {
+	recipient := fakePublicKey(42)
+	offset := uint16(0)
+	orderBy := NeighborsOrderNewestToOldest
+	pubKeyPrefixLength := byte(6)
+	tag := uint32(1234567890)
+	expected := []*Neighbour{
+		{
+			PublicKeyPrefix: fakeBytes(6, func(i int) byte {
+				return byte(i + 1)
+			}),
+			HeardSecondsAgo: uint32(100),
+			Snr:             10.0,
+		},
+		{
+			PublicKeyPrefix: fakeBytes(6, func(i int) byte {
+				return byte(i * 2)
+			}),
+			HeardSecondsAgo: uint32(200),
+			Snr:             20.0,
+		},
+	}
+
+	payload := BytesFrom(
+		Uint16(2, binary.LittleEndian),
+		Uint16(2, binary.LittleEndian),
+		Bytes(expected[0].PublicKeyPrefix...),
+		Uint32(expected[0].HeardSecondsAgo, binary.LittleEndian),
+		Byte(byte(expected[0].Snr*4)),
+		Bytes(expected[1].PublicKeyPrefix...),
+		Uint32(expected[1].HeardSecondsAgo, binary.LittleEndian),
+		Byte(byte(expected[1].Snr*4)),
+	)
+
+	t.Run("success", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			neighbours, err := conn.GetNeighbours(
+				t.Context(),
+				recipient,
+				uint8(len(expected)),
+				offset,
+				orderBy,
+				pubKeyPrefixLength)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(neighbours, expected) {
+				t.Fatalf("expected %s, got %s", describe(expected), describe(neighbours))
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSendBinaryReq),
+			Bytes(recipient.Bytes()...),
+			Bytes(payload...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(ResponseSent, BytesFrom(
+			Byte(0),
+			Uint32(tag, binary.LittleEndian),
+			Uint32(1000, binary.LittleEndian),
+		))
+
+		controller.Notify(PushBinaryResponse, BytesFrom(
+			Byte(0),
+			Uint32(tag, binary.LittleEndian),
+			Bytes(payload...),
+		))
+
 		controller.Wait()
 	})
 }
