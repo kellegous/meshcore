@@ -215,6 +215,7 @@ var sections = Sections{
 			},
 			{
 				Title: "getNeighbors",
+				Done:  true,
 			},
 			{
 				Title: "Push Advert",
