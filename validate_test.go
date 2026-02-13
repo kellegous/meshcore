@@ -177,6 +177,29 @@ func BytesFrom(patterns ...LiteralPattern) []byte {
 	return buf.Bytes()
 }
 
+func BinaryResponseFrom(
+	tag uint32,
+	patterns ...LiteralPattern,
+) []byte {
+	all := []LiteralPattern{
+		Byte(0),
+		Uint32(tag, binary.LittleEndian),
+	}
+	all = append(all, patterns...)
+	return BytesFrom(all...)
+}
+
+func BinaryRequest(
+	recipient PublicKey,
+	patterns ...Pattern,
+) []Pattern {
+	all := []Pattern{
+		Command(CommandSendBinaryReq),
+		Bytes(recipient.Bytes()...),
+	}
+	return append(all, patterns...)
+}
+
 func ValidateBytes(
 	got []byte,
 	patterns ...Pattern,

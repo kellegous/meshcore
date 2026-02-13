@@ -1652,29 +1652,6 @@ func TestGetNeighbours(t *testing.T) {
 		},
 	}
 
-	reqPayload := []Pattern{
-		Command(CommandSendBinaryReq),
-		Bytes(recipient.Bytes()...),
-		Byte(byte(BinaryRequestTypeGetNeighbours)),
-		Byte(0),
-		Byte(10),
-		Uint16(0, binary.LittleEndian), // offset
-		Byte(byte(orderBy)),
-		Byte(pubKeyPrefixLength),
-		AnyBytes(4),
-	}
-
-	resPayload := BytesFrom(
-		Uint16(2, binary.LittleEndian),
-		Uint16(2, binary.LittleEndian),
-		Bytes(expected[0].PublicKeyPrefix...),
-		Uint32(expected[0].HeardSecondsAgo, binary.LittleEndian),
-		Byte(byte(expected[0].Snr*4)),
-		Bytes(expected[1].PublicKeyPrefix...),
-		Uint32(expected[1].HeardSecondsAgo, binary.LittleEndian),
-		Byte(byte(expected[1].Snr*4)),
-	)
-
 	t.Run("success", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
 			neighbours, err := conn.GetNeighbours(
@@ -1694,7 +1671,15 @@ func TestGetNeighbours(t *testing.T) {
 
 		if err := ValidateBytes(
 			controller.Recv(),
-			reqPayload...,
+			BinaryRequest(recipient,
+				Byte(byte(BinaryRequestTypeGetNeighbours)),
+				Byte(0),
+				Byte(10),
+				Uint16(0, binary.LittleEndian), // offset
+				Byte(byte(orderBy)),
+				Byte(pubKeyPrefixLength),
+				AnyBytes(4),
+			)...,
 		); err != nil {
 			t.Fatal(err)
 		}
@@ -1705,10 +1690,16 @@ func TestGetNeighbours(t *testing.T) {
 			Uint32(1000, binary.LittleEndian),
 		))
 
-		controller.Notify(PushBinaryResponse, BytesFrom(
-			Byte(0),
-			Uint32(tag, binary.LittleEndian),
-			Bytes(resPayload...),
+		controller.Notify(PushBinaryResponse, BinaryResponseFrom(
+			tag,
+			Uint16(2, binary.LittleEndian),
+			Uint16(2, binary.LittleEndian),
+			Bytes(expected[0].PublicKeyPrefix...),
+			Uint32(expected[0].HeardSecondsAgo, binary.LittleEndian),
+			Byte(byte(expected[0].Snr*4)),
+			Bytes(expected[1].PublicKeyPrefix...),
+			Uint32(expected[1].HeardSecondsAgo, binary.LittleEndian),
+			Byte(byte(expected[1].Snr*4)),
 		))
 
 		controller.Wait()
