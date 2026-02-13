@@ -470,6 +470,49 @@ func (n *Neighbour) readFrom(r io.Reader, pubKeyPrefixLength byte) error {
 	return nil
 }
 
+type TraceData struct {
+	PathLen    uint8
+	Flags      uint8
+	Tag        uint32
+	AuthCode   uint32
+	PathHashes []byte
+	PathSnrs   []byte
+	LastSnr    float64
+}
+
+func (t *TraceData) readFrom(r io.Reader) error {
+	var reserved byte
+	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &t.PathLen); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &t.Flags); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &t.Tag); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &t.AuthCode); err != nil {
+		return poop.Chain(err)
+	}
+	t.PathHashes = make([]byte, t.PathLen)
+	t.PathSnrs = make([]byte, t.PathLen)
+	if _, err := io.ReadFull(r, t.PathHashes); err != nil {
+		return poop.Chain(err)
+	}
+	if _, err := io.ReadFull(r, t.PathSnrs); err != nil {
+		return poop.Chain(err)
+	}
+	var lastSnr int8
+	if err := binary.Read(r, binary.LittleEndian, &lastSnr); err != nil {
+		return poop.Chain(err)
+	}
+	t.LastSnr = float64(lastSnr) / 4
+	return nil
+}
+
 func readCString(r io.Reader, maxLen int) (string, error) {
 	buf := make([]byte, maxLen)
 	if _, err := io.ReadFull(r, buf[:]); err != nil {
@@ -1028,6 +1071,31 @@ func writeSetOtherParamsCommand(w io.Writer, manualAddContacts bool) error {
 	}
 
 	if err := binary.Write(&buf, binary.LittleEndian, boolToByte(manualAddContacts)); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
+func writeSendTracePathCommand(w io.Writer, tag uint32, auth uint32, path []byte) error {
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandSendTracePath); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Write(&buf, binary.LittleEndian, tag); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Write(&buf, binary.LittleEndian, auth); err != nil {
+		return poop.Chain(err)
+	}
+	// flags
+	if err := binary.Write(&buf, binary.LittleEndian, byte(0)); err != nil {
+		return poop.Chain(err)
+	}
+	if _, err := buf.Write(path); err != nil {
 		return poop.Chain(err)
 	}
 

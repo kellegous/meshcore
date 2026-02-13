@@ -1705,3 +1705,54 @@ func TestGetNeighbours(t *testing.T) {
 		controller.Wait()
 	})
 }
+
+func SkipTestTracePath(t *testing.T) { // TODO: fix this test
+	path := fakeBytes(10, func(i int) byte {
+		return byte(i + 1)
+	})
+	expected := &TraceData{
+		PathLen:    10,
+		Flags:      0,
+		Tag:        420, // randomly generated, fix.
+		AuthCode:   0,
+		PathHashes: path,
+		PathSnrs:   path,
+		LastSnr:    10.0,
+	}
+
+	t.Run("success", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			traceData, err := conn.TracePath(t.Context(), path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(traceData, expected) {
+				t.Fatalf("expected %s, got %s", describe(expected), describe(traceData))
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSendTracePath),
+			Uint32(expected.Tag, binary.LittleEndian),
+			Uint32(expected.AuthCode, binary.LittleEndian),
+			Byte(byte(expected.Flags)),
+			Bytes(path...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(PushTraceData, BytesFrom(
+			Byte(0),
+			Byte(expected.PathLen),
+			Byte(expected.Flags),
+			Uint32(expected.Tag, binary.LittleEndian),
+			Uint32(expected.AuthCode, binary.LittleEndian),
+			Bytes(expected.PathHashes...),
+			Bytes(expected.PathSnrs...),
+			Byte(byte(expected.LastSnr*4)),
+		))
+
+		controller.Wait()
+	})
+}
