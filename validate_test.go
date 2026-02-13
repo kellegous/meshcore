@@ -47,6 +47,7 @@ func (f *fromBytes) Bytes() []byte {
 type anyBytes struct {
 	len  int
 	desc string
+	cap  *[]byte
 }
 
 var _ Pattern = (*anyBytes)(nil)
@@ -60,7 +61,14 @@ func (a *anyBytes) Desc() string {
 }
 
 func (a *anyBytes) Compare(got []byte) bool {
-	return len(got) == a.len
+	if len(got) != a.len {
+		return false
+	}
+	if a.cap != nil {
+		*a.cap = make([]byte, a.len)
+		copy(*a.cap, got)
+	}
+	return true
 }
 
 func Byte(b byte) LiteralPattern {
@@ -152,6 +160,14 @@ func AnyBytes(n int) Pattern {
 	return &anyBytes{
 		len:  n,
 		desc: fmt.Sprintf("any bytes(%d)", n),
+	}
+}
+
+func AnyBytesCapture(n int, capture *[]byte) Pattern {
+	return &anyBytes{
+		len:  n,
+		desc: fmt.Sprintf("any bytes(%d)", n),
+		cap:  capture,
 	}
 }
 

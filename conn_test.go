@@ -1706,20 +1706,20 @@ func TestGetNeighbours(t *testing.T) {
 	})
 }
 
-func SkipTestTracePath(t *testing.T) { // TODO: fix this test
+func TestTracePath(t *testing.T) { // TODO: fix this test
 	path := fakeBytes(10, func(i int) byte {
 		return byte(i + 1)
 	})
 	expected := &TraceData{
 		PathLen:    10,
 		Flags:      0,
-		Tag:        420, // randomly generated, fix.
 		AuthCode:   0,
 		PathHashes: path,
 		PathSnrs:   path,
 		LastSnr:    10.0,
 	}
 
+	var tag []byte
 	t.Run("success", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
 			traceData, err := conn.TracePath(t.Context(), path)
@@ -1734,13 +1734,91 @@ func SkipTestTracePath(t *testing.T) { // TODO: fix this test
 		if err := ValidateBytes(
 			controller.Recv(),
 			Command(CommandSendTracePath),
-			Uint32(expected.Tag, binary.LittleEndian),
+			AnyBytesCapture(4, &tag),
 			Uint32(expected.AuthCode, binary.LittleEndian),
 			Byte(byte(expected.Flags)),
 			Bytes(path...),
 		); err != nil {
 			t.Fatal(err)
 		}
+
+		expected.Tag = binary.LittleEndian.Uint32(tag)
+
+		controller.Notify(PushTraceData, BytesFrom(
+			Byte(0),
+			Byte(expected.PathLen),
+			Byte(expected.Flags),
+			Uint32(expected.Tag, binary.LittleEndian),
+			Uint32(expected.AuthCode, binary.LittleEndian),
+			Bytes(expected.PathHashes...),
+			Bytes(expected.PathSnrs...),
+			Byte(byte(expected.LastSnr*4)),
+		))
+
+		controller.Wait()
+	})
+
+	t.Run("error", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			_, err := conn.TracePath(t.Context(), path)
+			if err == nil || err.Error() != "response error: 5 (file io error)" {
+				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSendTracePath),
+			AnyBytesCapture(4, &tag),
+			Uint32(expected.AuthCode, binary.LittleEndian),
+			Byte(byte(expected.Flags)),
+			Bytes(path...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		expected.Tag = binary.LittleEndian.Uint32(tag)
+
+		controller.Notify(ResponseErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+
+		controller.Wait()
+	})
+
+	t.Run("errant tag", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			traceData, err := conn.TracePath(t.Context(), path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(traceData, expected) {
+				t.Fatalf("expected %s, got %s", describe(expected), describe(traceData))
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSendTracePath),
+			AnyBytesCapture(4, &tag),
+			Uint32(expected.AuthCode, binary.LittleEndian),
+			Byte(byte(expected.Flags)),
+			Bytes(path...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		expected.Tag = binary.LittleEndian.Uint32(tag)
+
+		// tag does not match.
+		controller.Notify(PushTraceData, BytesFrom(
+			Byte(0),
+			Byte(expected.PathLen),
+			Byte(expected.Flags),
+			Uint32(expected.Tag+1, binary.LittleEndian), // errant tag
+			Uint32(expected.AuthCode, binary.LittleEndian),
+			Bytes(expected.PathHashes...),
+			Bytes(expected.PathSnrs...),
+			Byte(byte(expected.LastSnr*4)),
+		))
 
 		controller.Notify(PushTraceData, BytesFrom(
 			Byte(0),

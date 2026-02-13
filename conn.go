@@ -1227,5 +1227,9 @@ func (c *Conn) TracePath(ctx context.Context, path []byte) (*TraceData, error) {
 		return nil, poop.Chain(err)
 	}
 
+	if err := expect.Wait(ctx); err != nil {
+		return nil, poop.Chain(err)
+	}
+
 	return &traceData, err
 }

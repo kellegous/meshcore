@@ -208,6 +208,7 @@ var sections = Sections{
 			},
 			{
 				Title: "tracePath",
+				Done:  true,
 			},
 			{
 				Title: "setOtherParams",
