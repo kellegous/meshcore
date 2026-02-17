@@ -1233,3 +1233,40 @@ func (c *Conn) TracePath(ctx context.Context, path []byte) (*TraceData, error) {
 
 	return &traceData, err
 }
+
+func (c *Conn) Login(ctx context.Context, key PublicKey, password string) error {
+	var loginSuccess LoginSuccessResponse
+	var err error
+
+	expect := expect(
+		c.tx.Notifier(),
+		func(code NotificationCode, data []byte) bool {
+			switch code {
+			case PushLoginSuccess:
+				err = loginSuccess.readFrom(bytes.NewReader(data))
+				if err != nil {
+					return false
+				}
+				if !bytes.Equal(loginSuccess.PubKeyPrefix[:], key.Prefix(6)) {
+					// not the right data, continue waiting
+					return true
+				}
+			case ResponseErr:
+				err = readError(data)
+			}
+			return false
+		},
+		PushLoginSuccess,
+		ResponseErr)
+	defer expect.Unsubscribe()
+
+	if err := writeLoginCommand(c.tx, key, password); err != nil {
+		return poop.Chain(err)
+	}
+
+	if err := expect.Wait(ctx); err != nil {
+		return poop.Chain(err)
+	}
+
+	return err
+}

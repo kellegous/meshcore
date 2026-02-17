@@ -173,6 +173,7 @@ var sections = Sections{
 			},
 			{
 				Title: "login",
+				Done:  true,
 			},
 			{
 				Title: "getStatus",

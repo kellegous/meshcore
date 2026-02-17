@@ -513,6 +513,21 @@ func (t *TraceData) readFrom(r io.Reader) error {
 	return nil
 }
 
+type LoginSuccessResponse struct {
+	PubKeyPrefix [6]byte
+}
+
+func (l *LoginSuccessResponse) readFrom(r io.Reader) error {
+	var reserved byte
+	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
+		return poop.Chain(err)
+	}
+	if _, err := io.ReadFull(r, l.PubKeyPrefix[:]); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
 func readCString(r io.Reader, maxLen int) (string, error) {
 	buf := make([]byte, maxLen)
 	if _, err := io.ReadFull(r, buf[:]); err != nil {
@@ -1096,6 +1111,28 @@ func writeSendTracePathCommand(w io.Writer, tag uint32, auth uint32, path []byte
 		return poop.Chain(err)
 	}
 	if _, err := buf.Write(path); err != nil {
+		return poop.Chain(err)
+	}
+
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
+func writeLoginCommand(w io.Writer, key PublicKey, password string) error {
+	if len(password) > 15 {
+		return poop.New("password is too long (max 15 characters)")
+	}
+
+	var buf bytes.Buffer
+	if err := writeCommandCode(&buf, CommandSendLogin); err != nil {
+		return poop.Chain(err)
+	}
+	if err := key.writeTo(&buf); err != nil {
+		return poop.Chain(err)
+	}
+	if err := writeString(&buf, password); err != nil {
 		return poop.Chain(err)
 	}
 

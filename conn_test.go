@@ -1834,3 +1834,83 @@ func TestTracePath(t *testing.T) { // TODO: fix this test
 		controller.Wait()
 	})
 }
+
+func TestLogin(t *testing.T) {
+	key := fakePublicKey(42)
+	password := "password"
+
+	t.Run("success", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.Login(t.Context(), key, password); err != nil {
+				t.Fatal(err)
+			}
+		})
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSendLogin),
+			Bytes(key.Bytes()...),
+			String(password),
+		); err != nil {
+			t.Fatal(err)
+		}
+		controller.Notify(PushLoginSuccess, BytesFrom(
+			Byte(0),
+			Bytes(key.Prefix(6)...),
+		))
+		controller.Wait()
+	})
+
+	t.Run("error", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.Login(t.Context(), key, password); err == nil || err.Error() != "response error: 5 (file io error)" {
+				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			}
+		})
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSendLogin),
+			Bytes(key.Bytes()...),
+			String(password),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(
+			ResponseErr,
+			BytesFrom(
+				Byte(byte(ErrorCodeFileIOError)),
+			))
+
+		controller.Wait()
+	})
+
+	t.Run("errant key", func(t *testing.T) {
+		otherKey := fakePublicKey(43)
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.Login(t.Context(), key, password); err != nil {
+				t.Fatal(err)
+			}
+		})
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandSendLogin),
+			Bytes(key.Bytes()...),
+			String(password),
+		); err != nil {
+			t.Fatal(err)
+		}
+		controller.Notify(
+			PushLoginSuccess,
+			BytesFrom(
+				Byte(0),
+				Bytes(otherKey.Prefix(6)...),
+			))
+		controller.Notify(
+			PushLoginSuccess,
+			BytesFrom(
+				Byte(0),
+				Bytes(key.Prefix(6)...),
+			))
+		controller.Wait()
+	})
+}
