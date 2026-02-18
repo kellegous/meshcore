@@ -1914,3 +1914,32 @@ func TestLogin(t *testing.T) {
 		controller.Wait()
 	})
 }
+
+func TestOnAdvert(t *testing.T) {
+	key := fakePublicKey(42)
+
+	subReady := make(chan struct{})
+
+	controller := DoCommand(func(conn *Conn) {
+		subTriggered := make(chan struct{})
+		unsub := conn.OnAdvert(func(advertEvent *AdvertEvent) {
+			if !reflect.DeepEqual(advertEvent.PublicKey, key) {
+				t.Fatalf("expected %s, got %s", describe(key), describe(advertEvent.PublicKey))
+			}
+
+			close(subTriggered)
+		})
+		defer unsub()
+
+		close(subReady)
+		<-subTriggered
+	})
+
+	<-subReady
+
+	controller.Notify(PushAdvert, BytesFrom(
+		Bytes(key.Bytes()...),
+	))
+
+	controller.Wait()
+}

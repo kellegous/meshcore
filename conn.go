@@ -1271,13 +1271,28 @@ func (c *Conn) Login(ctx context.Context, key PublicKey, password string) error 
 	return err
 }
 
+// OnAdvert subscribes to advert events.
 func (c *Conn) OnAdvert(fn func(*AdvertEvent)) func() {
 	return c.tx.Notifier().Subscribe(PushAdvert, func(data []byte) {
-		// TODO(kellegous): How will these errors be handled?
+		// TODO(kellegous): Errors should be propagated to the
+		// receive error callback in the transport.
 		var advertEvent AdvertEvent
 		if err := advertEvent.readFrom(bytes.NewReader(data)); err != nil {
 			return
 		}
 		fn(&advertEvent)
+	})
+}
+
+// OnPathUpdated subscribes to path updated events.
+func (c *Conn) OnPathUpdated(fn func(*PathUpdatedEvent)) func() {
+	return c.tx.Notifier().Subscribe(PushPathUpdated, func(data []byte) {
+		// TODO(kellegous): Errors should be propagated to the
+		// receive error callback in the transport.
+		var pathUpdatedEvent PathUpdatedEvent
+		if err := pathUpdatedEvent.readFrom(bytes.NewReader(data)); err != nil {
+			return
+		}
+		fn(&pathUpdatedEvent)
 	})
 }

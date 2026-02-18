@@ -539,6 +539,17 @@ func (a *AdvertEvent) readFrom(r io.Reader) error {
 	return nil
 }
 
+type PathUpdatedEvent struct {
+	PublicKey PublicKey
+}
+
+func (p *PathUpdatedEvent) readFrom(r io.Reader) error {
+	if _, err := io.ReadFull(r, p.PublicKey.key[:]); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
 func readCString(r io.Reader, maxLen int) (string, error) {
 	buf := make([]byte, maxLen)
 	if _, err := io.ReadFull(r, buf[:]); err != nil {

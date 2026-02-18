@@ -225,6 +225,7 @@ var sections = Sections{
 			},
 			{
 				Title: "Push PathUpdated",
+				Done:  true,
 			},
 			{
 				Title: "Push SendConfirmed",
