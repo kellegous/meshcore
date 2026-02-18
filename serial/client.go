@@ -22,18 +22,33 @@ func Connect(ctx context.Context, address string) (*meshcore.Conn, error) {
 
 	notifier := meshcore.NewNotifier()
 
+	// TODO(kellegous): This needs to become a part of the
+	// transport interface.
+	onRecvError := func(err error) {
+		panic(err)
+	}
+
 	go func() {
+		defer port.Close()
+
 		var buf [1024]byte
 		for {
 			n, err := port.Read(buf[:])
 			if err != nil {
+				onRecvError(err)
+				return
+			} else if n == 0 {
+				onRecvError(poop.New("read 0 bytes"))
 				return
 			}
 
 			fmt.Println(buf[:n])
+
+			code := meshcore.NotificationCode(buf[0])
+			notifier.Notify(code, buf[1:n])
 		}
 	}()
-	// TODO(kellegous): Need to start notifying routine
+
 	return meshcore.NewConnection(&tx{
 		port:     port,
 		notifier: notifier,
