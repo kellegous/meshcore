@@ -221,6 +221,7 @@ var sections = Sections{
 			},
 			{
 				Title: "Push Advert",
+				Done:  true,
 			},
 			{
 				Title: "Push PathUpdated",
