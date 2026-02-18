@@ -124,19 +124,19 @@ func (c *Client) Connect(
 
 	toDevice, frDevice := characteristics[0], characteristics[1]
 
-	transport := &Transport{
-		device:   device,
-		toDevice: toDevice,
-		notifier: meshcore.NewNotifier(),
-	}
+	notifier := meshcore.NewNotifier()
 
 	frDevice.EnableNotifications(func(data []byte) {
 		code := meshcore.NotificationCode(data[0])
 		if nf := options.onNotification; nf != nil {
 			nf(code, data[1:])
 		}
-		transport.notifier.Notify(code, data[1:])
+		notifier.Notify(code, data[1:])
 	})
 
-	return meshcore.NewConnection(transport), nil
+	return meshcore.NewConnection(&tx{
+		device:   device,
+		toDevice: toDevice,
+		notifier: notifier,
+	}), nil
 }

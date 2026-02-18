@@ -6,22 +6,22 @@ import (
 	"github.com/kellegous/meshcore"
 )
 
-type Transport struct {
+type tx struct {
 	device   bluetooth.Device
 	toDevice bluetooth.DeviceCharacteristic
 	notifier *meshcore.Notifier
 }
 
-var _ meshcore.Transport = (*Transport)(nil)
+var _ meshcore.Transport = (*tx)(nil)
 
-func (t *Transport) Write(p []byte) (n int, err error) {
+func (t *tx) Write(p []byte) (n int, err error) {
 	return t.toDevice.Write(p)
 }
 
-func (t *Transport) Disconnect() error {
+func (t *tx) Disconnect() error {
 	return t.device.Disconnect()
 }
 
-func (t *Transport) Notifier() *meshcore.Notifier {
+func (t *tx) Notifier() *meshcore.Notifier {
 	return t.notifier
 }
