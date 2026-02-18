@@ -6,12 +6,38 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"strings"
 
 	"github.com/kellegous/meshcore"
 	meshcore_bluetooth "github.com/kellegous/meshcore/bluetooth"
+	meshcore_serial "github.com/kellegous/meshcore/serial"
 	"github.com/kellegous/poop"
 	"tinygo.org/x/bluetooth"
 )
+
+func connect(ctx context.Context, name string) (*meshcore.Conn, error) {
+	tx, addr, ok := strings.Cut(name, ":")
+	if !ok {
+		return nil, poop.Newf("invalid name: %s", name)
+	}
+
+	switch tx {
+	case "ble", "bluetooth":
+		client, err := meshcore_bluetooth.NewClient(bluetooth.DefaultAdapter)
+		if err != nil {
+			return nil, poop.Chain(err)
+		}
+		device, err := client.LookupDevice(ctx, addr)
+		if err != nil {
+			return nil, poop.Chain(err)
+		}
+		return client.Connect(ctx, device.Address)
+	case "usb", "serial":
+		return meshcore_serial.Connect(ctx, addr)
+	}
+
+	return nil, poop.Newf("invalid transport: %s", tx)
+}
 
 func main() {
 	if err := run(context.Background()); err != nil {
@@ -111,23 +137,7 @@ func run(ctx context.Context) error {
 		return poop.Newf("expected 1 argument, got %d", flag.NArg())
 	}
 
-	client, err := meshcore_bluetooth.NewClient(bluetooth.DefaultAdapter)
-	if err != nil {
-		return poop.Chain(err)
-	}
-
-	device, err := client.LookupDevice(ctx, flag.Arg(0))
-	if err != nil {
-		return poop.Chain(err)
-	}
-
-	conn, err := client.Connect(
-		ctx,
-		device.Address,
-		meshcore_bluetooth.WithNotificationCallback(func(code meshcore.NotificationCode, data []byte) {
-			fmt.Printf("notification: %s (%d)\n", code, len(data))
-		}),
-	)
+	conn, err := connect(ctx, flag.Arg(0))
 	if err != nil {
 		return poop.Chain(err)
 	}
