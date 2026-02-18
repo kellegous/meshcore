@@ -2,6 +2,7 @@ package serial
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/kellegous/meshcore"
 	"github.com/kellegous/poop"
@@ -18,9 +19,23 @@ func Connect(ctx context.Context, address string) (*meshcore.Conn, error) {
 	if err != nil {
 		return nil, poop.Chain(err)
 	}
+
+	notifier := meshcore.NewNotifier()
+
+	go func() {
+		var buf [1024]byte
+		for {
+			n, err := port.Read(buf[:])
+			if err != nil {
+				return
+			}
+
+			fmt.Println(buf[:n])
+		}
+	}()
 	// TODO(kellegous): Need to start notifying routine
 	return meshcore.NewConnection(&tx{
 		port:     port,
-		notifier: meshcore.NewNotifier(),
+		notifier: notifier,
 	}), nil
 }

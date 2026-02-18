@@ -2,10 +2,9 @@ package main
 
 import (
 	"context"
-	"fmt"
 
+	meshcore_serial "github.com/kellegous/meshcore/serial"
 	"github.com/kellegous/poop"
-	"go.bug.st/serial"
 )
 
 func main() {
@@ -15,18 +14,15 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	port, err := serial.Open("/dev/cu.usbserial-0001", &serial.Mode{
-		BaudRate: 115200,
-		DataBits: 8,
-		StopBits: serial.OneStopBit,
-		Parity:   serial.NoParity,
-	})
+	c, err := meshcore_serial.Connect(ctx, "/dev/cu.usbserial-0001")
 	if err != nil {
 		return poop.Chain(err)
 	}
-	defer port.Close()
+	defer c.Disconnect()
 
-	fmt.Println(port)
+	ch := make(chan struct{})
+
+	<-ch
 
 	return nil
 }
