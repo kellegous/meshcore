@@ -528,6 +528,17 @@ func (l *LoginSuccessResponse) readFrom(r io.Reader) error {
 	return nil
 }
 
+type AdvertEvent struct {
+	PublicKey PublicKey
+}
+
+func (a *AdvertEvent) readFrom(r io.Reader) error {
+	if _, err := io.ReadFull(r, a.PublicKey.key[:]); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
 func readCString(r io.Reader, maxLen int) (string, error) {
 	buf := make([]byte, maxLen)
 	if _, err := io.ReadFull(r, buf[:]); err != nil {

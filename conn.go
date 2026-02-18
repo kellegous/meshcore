@@ -1270,3 +1270,14 @@ func (c *Conn) Login(ctx context.Context, key PublicKey, password string) error 
 
 	return err
 }
+
+func (c *Conn) OnAdvert(fn func(*AdvertEvent)) func() {
+	return c.tx.Notifier().Subscribe(PushAdvert, func(data []byte) {
+		// TODO(kellegous): How will these errors be handled?
+		var advertEvent AdvertEvent
+		if err := advertEvent.readFrom(bytes.NewReader(data)); err != nil {
+			return
+		}
+		fn(&advertEvent)
+	})
+}
