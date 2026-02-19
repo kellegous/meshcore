@@ -82,32 +82,13 @@ func run(ctx context.Context) error {
 		fmt.Printf("exchanging contacts\n")
 		defer fmt.Printf("contacts exchanged\n")
 
-		var wg sync.WaitGroup
-		wg.Add(2)
-
-		clickSub := click.OnAdvert(func(e *meshcore.AdvertEvent) {
-			fmt.Printf("click advert: %v\n", e)
-			wg.Done()
-		})
-		defer clickSub()
-
-		clackSub := clack.OnAdvert(func(e *meshcore.AdvertEvent) {
-			fmt.Printf("clack advert: %v\n", e)
-			wg.Done()
-		})
-		defer clackSub()
-
-		if err := click.SendAdvert(ctx, meshcore.SelfAdvertTypeFlood); err != nil {
+		if err := discover(ctx, click, clack); err != nil {
 			return poop.Chain(err)
 		}
-		fmt.Printf("click advert sent\n")
 
-		if err := clack.SendAdvert(ctx, meshcore.SelfAdvertTypeFlood); err != nil {
+		if err := discover(ctx, clack, click); err != nil {
 			return poop.Chain(err)
 		}
-		fmt.Printf("clack advert sent\n")
-
-		wg.Wait()
 
 		return nil
 	}(); err != nil {
@@ -160,6 +141,29 @@ func resetContacts(
 			return poop.Chain(err)
 		}
 	}
+
+	return nil
+}
+
+func discover(
+	ctx context.Context,
+	advertiser *meshcore.Conn,
+	listener *meshcore.Conn,
+) error {
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	listenerSub := listener.OnAdvert(func(e *meshcore.AdvertEvent) {
+		fmt.Printf("advert: %v\n", e)
+		wg.Done()
+	})
+	defer listenerSub()
+
+	if err := advertiser.SendAdvert(ctx, meshcore.SelfAdvertTypeFlood); err != nil {
+		return poop.Chain(err)
+	}
+
+	wg.Wait()
 
 	return nil
 }
