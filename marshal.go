@@ -11,7 +11,7 @@ import (
 
 type Contact struct {
 	PublicKey  PublicKey
-	Type       byte
+	Type       byte // TODO(kellegous): Add contact type
 	Flags      byte
 	OutPath    []byte
 	AdvName    string
@@ -537,6 +537,56 @@ type AdvertEvent struct {
 
 func (a *AdvertEvent) readFrom(r io.Reader) error {
 	if _, err := io.ReadFull(r, a.PublicKey.key[:]); err != nil {
+		return poop.Chain(err)
+	}
+	return nil
+}
+
+// TODO(kellegous): Is this just a contact?
+type NewAdvertEvent struct {
+	PublicKey  PublicKey
+	Type       byte // TODO(kellegous): Add contact type
+	Flags      byte
+	OutPathLen int8
+	OutPath    []byte
+	AdvName    string
+	LastAdvert time.Time
+	AdvLat     float64
+	AdvLon     float64
+}
+
+func (n *NewAdvertEvent) readFrom(r io.Reader) error {
+	if _, err := io.ReadFull(r, n.PublicKey.key[:]); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &n.Type); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &n.Flags); err != nil {
+		return poop.Chain(err)
+	}
+	var outPathLen int8
+	if err := binary.Read(r, binary.LittleEndian, &outPathLen); err != nil {
+		return poop.Chain(err)
+	}
+	var outPath [64]byte
+	if _, err := io.ReadFull(r, outPath[:]); err != nil {
+		return poop.Chain(err)
+	}
+	if outPathLen > 0 {
+		n.OutPath = outPath[:outPathLen]
+	}
+	var err error
+	n.AdvName, err = readCString(r, 32)
+	if err != nil {
+		return poop.Chain(err)
+	}
+	n.LastAdvert, err = readTime(r)
+	if err != nil {
+		return poop.Chain(err)
+	}
+	n.AdvLat, n.AdvLon, err = readLatLon(r)
+	if err != nil {
 		return poop.Chain(err)
 	}
 	return nil

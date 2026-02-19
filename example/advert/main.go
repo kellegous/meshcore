@@ -67,6 +67,7 @@ func run(ctx context.Context) error {
 	defer unsub()
 
 	<-ctx.Done()
+	os.Exit(0)
 
 	return nil
 }

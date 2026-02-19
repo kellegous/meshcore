@@ -15,7 +15,16 @@ const (
 	outgoingFrameType = 0x3c // "<"
 )
 
-func Connect(ctx context.Context, address string) (*meshcore.Conn, error) {
+func Connect(
+	ctx context.Context,
+	address string,
+	opts ...ConnectOption,
+) (*meshcore.Conn, error) {
+	options := &ConnectOptions{}
+	for _, opt := range opts {
+		opt(options)
+	}
+
 	port, err := serial.Open(address, &serial.Mode{
 		BaudRate: 115200,
 		DataBits: 8,
@@ -68,6 +77,9 @@ func Connect(ctx context.Context, address string) (*meshcore.Conn, error) {
 			}
 
 			code := meshcore.NotificationCode(data[0])
+			if nf := options.onNotification; nf != nil {
+				nf(code, data[1:])
+			}
 			notifier.Notify(code, data[1:])
 		}
 	}()

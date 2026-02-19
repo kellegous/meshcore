@@ -85,41 +85,29 @@ func run(ctx context.Context) error {
 		var wg sync.WaitGroup
 		wg.Add(2)
 
-		var clickKey, clackKey meshcore.PublicKey
-
-		clickSub := click.OnAdvert(func(advertEvent *meshcore.AdvertEvent) {
-			fmt.Printf("click advert: %s\n", advertEvent.PublicKey)
-			clackKey = advertEvent.PublicKey
+		clickSub := click.OnAdvert(func(e *meshcore.AdvertEvent) {
+			fmt.Printf("click advert: %v\n", e)
 			wg.Done()
 		})
 		defer clickSub()
 
-		clackSub := clack.OnAdvert(func(advertEvent *meshcore.AdvertEvent) {
-			fmt.Printf("clack advert: %s\n", advertEvent.PublicKey)
-			clickKey = advertEvent.PublicKey
+		clackSub := clack.OnAdvert(func(e *meshcore.AdvertEvent) {
+			fmt.Printf("clack advert: %v\n", e)
 			wg.Done()
 		})
 		defer clackSub()
 
-		if err := click.SendAdvert(ctx, meshcore.SelfAdvertTypeZeroHop); err != nil {
+		if err := click.SendAdvert(ctx, meshcore.SelfAdvertTypeFlood); err != nil {
 			return poop.Chain(err)
 		}
 		fmt.Printf("click advert sent\n")
 
-		if err := clack.SendAdvert(ctx, meshcore.SelfAdvertTypeZeroHop); err != nil {
+		if err := clack.SendAdvert(ctx, meshcore.SelfAdvertTypeFlood); err != nil {
 			return poop.Chain(err)
 		}
 		fmt.Printf("clack advert sent\n")
 
 		wg.Wait()
-
-		if err := click.ShareContact(ctx, clackKey); err != nil {
-			return poop.Chain(err)
-		}
-
-		if err := clack.ShareContact(ctx, clickKey); err != nil {
-			return poop.Chain(err)
-		}
 
 		return nil
 	}(); err != nil {
@@ -145,9 +133,14 @@ func connect(ctx context.Context, name string) (*meshcore.Conn, error) {
 		if err != nil {
 			return nil, poop.Chain(err)
 		}
-		return client.Connect(ctx, device.Address)
+		return client.Connect(ctx, device.Address,
+			meshcore_bluetooth.WithNotificationCallback(func(code meshcore.NotificationCode, data []byte) {
+				fmt.Printf("<notification: %v>\n", code)
+			}))
 	case "usb", "serial":
-		return meshcore_serial.Connect(ctx, addr)
+		return meshcore_serial.Connect(ctx, addr, meshcore_serial.WithNotificationCallback(func(code meshcore.NotificationCode, data []byte) {
+			fmt.Printf("<notification: %v>\n", code)
+		}))
 	}
 
 	return nil, poop.Newf("invalid transport: %s", tx)

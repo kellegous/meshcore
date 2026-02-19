@@ -1284,6 +1284,18 @@ func (c *Conn) OnAdvert(fn func(*AdvertEvent)) func() {
 	})
 }
 
+func (c *Conn) OnNewAdvert(fn func(*NewAdvertEvent)) func() {
+	return c.tx.Notifier().Subscribe(PushNewAdvert, func(data []byte) {
+		// TODO(kellegous): Errors should be propagated to the
+		// receive error callback in the transport.
+		var newAdvertEvent NewAdvertEvent
+		if err := newAdvertEvent.readFrom(bytes.NewReader(data)); err != nil {
+			return
+		}
+		fn(&newAdvertEvent)
+	})
+}
+
 // OnPathUpdated subscribes to path updated events.
 func (c *Conn) OnPathUpdated(fn func(*PathUpdatedEvent)) func() {
 	return c.tx.Notifier().Subscribe(PushPathUpdated, func(data []byte) {
