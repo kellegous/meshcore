@@ -253,6 +253,7 @@ var sections = Sections{
 			},
 			{
 				Title: "Push NewAdvert",
+				Done:  true,
 			},
 			{
 				Title: "Push TelemetryResponse",
@@ -271,6 +272,7 @@ var sections = Sections{
 			},
 			{
 				Title: "USB/Serial",
+				Done:  true,
 			},
 		},
 	},

@@ -1943,3 +1943,52 @@ func TestOnAdvert(t *testing.T) {
 
 	controller.Wait()
 }
+
+func TestOnNewAdvert(t *testing.T) {
+	outPath := fakeBytes(64, func(i int) byte {
+		return byte(i + 1)
+	})
+
+	expected := &NewAdvertEvent{
+		PublicKey:  fakePublicKey(42),
+		Type:       ContactTypeChat,
+		Flags:      0,
+		OutPath:    outPath[:6],
+		AdvName:    "test",
+		LastAdvert: time.Unix(420, 0),
+		AdvLat:     37.774929,
+		AdvLon:     -122.419416,
+	}
+
+	subReady := make(chan struct{})
+
+	controller := DoCommand(func(conn *Conn) {
+		subTriggered := make(chan struct{})
+		unsub := conn.OnNewAdvert(func(newAdvertEvent *NewAdvertEvent) {
+			if !reflect.DeepEqual(newAdvertEvent, expected) {
+				t.Fatalf("expected %s, got %s", describe(expected), describe(newAdvertEvent))
+			}
+
+			close(subTriggered)
+		})
+		defer unsub()
+
+		close(subReady)
+		<-subTriggered
+	})
+
+	<-subReady
+
+	controller.Notify(PushNewAdvert, BytesFrom(
+		Bytes(expected.PublicKey.Bytes()...),
+		Byte(byte(ContactTypeChat)),
+		Byte(0),
+		Byte(byte(len(expected.OutPath))),
+		Bytes(outPath...),
+		CString("test", 32),
+		Time(time.Unix(420, 0), binary.LittleEndian),
+		LatLon(37.774929, -122.419416, binary.LittleEndian),
+	))
+
+	controller.Wait()
+}

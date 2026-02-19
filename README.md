@@ -8,17 +8,17 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
 **In Progress**
 
 ```
-|██████████████████████████████████████            | 76%
+|████████████████████████████████████████          | 80%
 ```
 
 ## TODO:
 
 
- - [ ] Transports
+ - [x] Transports
  
    - [x] BLE
  
-   - [ ] USB/Serial
+   - [x] USB/Serial
  
 
  - [ ] meshcore.Conn
@@ -35,7 +35,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
  
    - [ ] Push MsgWaiting
  
-   - [ ] Push NewAdvert
+   - [x] Push NewAdvert
  
    - [x] Push PathUpdated
  

@@ -11,7 +11,7 @@ import (
 
 type Contact struct {
 	PublicKey  PublicKey
-	Type       byte // TODO(kellegous): Add contact type
+	Type       ContactType
 	Flags      byte
 	OutPath    []byte
 	AdvName    string
@@ -118,6 +118,15 @@ func (c *Contact) readFrom(r io.Reader) error {
 
 	return nil
 }
+
+type ContactType byte
+
+const (
+	ContactTypeNone     ContactType = 0
+	ContactTypeChat     ContactType = 1
+	ContactTypeRepeater ContactType = 2
+	ContactTypeRoom     ContactType = 3
+)
 
 type SentResponse struct {
 	Result         int8
@@ -542,12 +551,10 @@ func (a *AdvertEvent) readFrom(r io.Reader) error {
 	return nil
 }
 
-// TODO(kellegous): Is this just a contact?
 type NewAdvertEvent struct {
 	PublicKey  PublicKey
-	Type       byte // TODO(kellegous): Add contact type
+	Type       ContactType
 	Flags      byte
-	OutPathLen int8
 	OutPath    []byte
 	AdvName    string
 	LastAdvert time.Time
