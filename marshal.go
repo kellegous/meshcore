@@ -90,7 +90,10 @@ func (c *Contact) readFrom(r io.Reader) error {
 	if _, err := io.ReadFull(r, outPath[:]); err != nil {
 		return poop.Chain(err)
 	}
-	c.OutPath = outPath[:outPathLen]
+
+	if outPathLen > 0 {
+		c.OutPath = outPath[:outPathLen]
+	}
 
 	var err error
 	c.AdvName, err = readCString(r, 32)

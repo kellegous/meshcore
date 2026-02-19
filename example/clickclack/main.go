@@ -45,6 +45,18 @@ func run(ctx context.Context) error {
 
 	fmt.Printf("clack: %s\n", flag.Arg(1))
 
+	clickInfo, err := click.GetSelfInfo(ctx)
+	if err != nil {
+		return poop.Chain(err)
+	}
+	fmt.Printf("click info: %+v\n", clickInfo)
+
+	clackInfo, err := clack.GetSelfInfo(ctx)
+	if err != nil {
+		return poop.Chain(err)
+	}
+	fmt.Printf("clack info: %+v\n", clackInfo)
+
 	// reset contacts
 	if err := func() error {
 		fmt.Printf("resetting contacts\n")
