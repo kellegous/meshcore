@@ -5,6 +5,7 @@ go 1.25.6
 require (
 	github.com/kellegous/poop v0.7.0
 	go.bug.st/serial v1.6.4
+	golang.org/x/sync v0.10.0
 	tinygo.org/x/bluetooth v0.14.0
 )
 
