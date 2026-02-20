@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/kellegous/poop"
 )
@@ -136,6 +137,14 @@ func readNotification(code NotificationCode, data []byte) (Notification, error) 
 		return readEndOfContactsNotification(data)
 	case NotificationTypeSelfInfo:
 		return readSelfInfoNotification(data)
+	case NotificationTypeSent:
+		return readSentNotification(data)
+	case NotificationTypeContactMsgRecv:
+		return readContactMsgRecvNotification(data)
+	case NotificationTypeChannelMsgRecv:
+		return readChannelMsgRecvNotification(data)
+	case NotificationTypeCurrTime:
+		return readCurrTimeNotification(data)
 	}
 	return nil, poop.New("unknown notification code")
 }
@@ -275,6 +284,81 @@ func readSelfInfoNotification(data []byte) (*SelfInfoNotification, error) {
 		return nil, poop.Chain(err)
 	}
 	n.Name, err = readString(r)
+	if err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &n, nil
+}
+
+type SentNotification struct {
+	Result         int8
+	ExpectedAckCRC uint32
+	EstTimeout     uint32
+}
+
+func (e *SentNotification) NotificationCode() NotificationCode {
+	return NotificationTypeSent
+}
+
+func readSentNotification(data []byte) (*SentNotification, error) {
+	var n SentNotification
+	r := bytes.NewReader(data)
+	if err := binary.Read(r, binary.LittleEndian, &n.Result); err != nil {
+		return nil, poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &n.ExpectedAckCRC); err != nil {
+		return nil, poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &n.EstTimeout); err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &n, nil
+}
+
+type ContactMsgRecvNotification struct {
+	ContactMessage ContactMessage
+}
+
+func (e *ContactMsgRecvNotification) NotificationCode() NotificationCode {
+	return NotificationTypeContactMsgRecv
+}
+
+func readContactMsgRecvNotification(data []byte) (*ContactMsgRecvNotification, error) {
+	var n ContactMsgRecvNotification
+	if err := n.ContactMessage.readFrom(bytes.NewReader(data)); err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &n, nil
+}
+
+type ChannelMsgRecvNotification struct {
+	ChannelMessage ChannelMessage
+}
+
+func (e *ChannelMsgRecvNotification) NotificationCode() NotificationCode {
+	return NotificationTypeChannelMsgRecv
+}
+
+func readChannelMsgRecvNotification(data []byte) (*ChannelMsgRecvNotification, error) {
+	var n ChannelMsgRecvNotification
+	if err := n.ChannelMessage.readFrom(bytes.NewReader(data)); err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &n, nil
+}
+
+type CurrTimeNotification struct {
+	Time time.Time
+}
+
+func (e *CurrTimeNotification) NotificationCode() NotificationCode {
+	return NotificationTypeCurrTime
+}
+
+func readCurrTimeNotification(data []byte) (*CurrTimeNotification, error) {
+	var n CurrTimeNotification
+	var err error
+	n.Time, err = readTime(bytes.NewReader(data))
 	if err != nil {
 		return nil, poop.Chain(err)
 	}
