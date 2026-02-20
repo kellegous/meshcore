@@ -2,10 +2,14 @@ package meshcore
 
 import (
 	"context"
+	"errors"
 	"iter"
 	"slices"
 	"sync"
+	"sync/atomic"
 )
+
+var ErrShutdown = errors.New("shutdown")
 
 type notificationData struct {
 	Notification Notification
@@ -13,11 +17,14 @@ type notificationData struct {
 }
 
 type subscription struct {
-	ch chan *notificationData
+	isClosed atomic.Bool
+	ch       chan *notificationData
 }
 
 func (s *subscription) cancel() {
-	close(s.ch)
+	if s.isClosed.CompareAndSwap(false, true) {
+		close(s.ch)
+	}
 }
 
 func (s *subscription) publish(notification Notification, error error) {
@@ -74,6 +81,7 @@ func (e *NotificationCenter) Subscribe(
 			select {
 			case data, ok := <-s.ch:
 				if !ok {
+					yield(nil, ErrShutdown)
 					return
 				}
 				if !yield(data.Notification, data.Error) {
@@ -100,4 +108,17 @@ func (e *NotificationCenter) Publish(code NotificationCode, data []byte) {
 	for _, s := range streams {
 		s.publish(notification, err)
 	}
+}
+
+func (e *NotificationCenter) Shutdown() {
+	e.lck.Lock()
+	defer e.lck.Unlock()
+
+	for _, subs := range e.subscriptions {
+		for _, sub := range subs {
+			sub.cancel()
+		}
+	}
+
+	e.subscriptions = make(map[NotificationCode][]*subscription)
 }

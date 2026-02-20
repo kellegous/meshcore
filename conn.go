@@ -120,10 +120,8 @@ func (c *Conn) RemoveContact(ctx context.Context, key *PublicKey) error {
 		return poop.Chain(err)
 	}
 
-	res, err, ok := next()
-	if !ok {
-		return poop.Chain(io.ErrUnexpectedEOF)
-	} else if err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return poop.Chain(err)
 	}
 
@@ -147,45 +145,40 @@ func (c *Conn) GetContacts(ctx context.Context, opts *GetContactsOptions) ([]*Co
 		opts = &GetContactsOptions{}
 	}
 
-	var contacts []*Contact
-	var err error
-
-	subs := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeContactsStart:
-				return true
-			case NotificationTypeErr:
-				err = readError(data)
-				return false
-			case NotificationTypeContact:
-				var contact Contact
-				if err := contact.readFrom(bytes.NewReader(data)); err != nil {
-					return false
-				}
-				contacts = append(contacts, &contact)
-				return true
-			case NotificationTypeEndOfContacts:
-				return false
-			}
-			panic("unreachable")
-		},
-		NotificationTypeContactsStart,
-		NotificationTypeContact,
-		NotificationTypeEndOfContacts,
-		NotificationTypeErr)
-	defer subs.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeContactsStart, NotificationTypeErr, NotificationTypeContact, NotificationTypeEndOfContacts),
+	)
+	defer done()
 
 	if err := writeGetContactsCommand(c.tx, opts.Since); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	if err := subs.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	return contacts, err
+	switch t := res.(type) {
+	case *ContactStartNotification:
+	case *ErrNotification:
+		return nil, poop.Chain(t.Error())
+	}
+
+	var contacts []*Contact
+	for {
+		res, err, _ := next()
+		if err != nil {
+			return nil, poop.Chain(err)
+		}
+
+		switch t := res.(type) {
+		case *ContactNotification:
+			contacts = append(contacts, &t.Contact)
+		case *EndOfContactsNotification:
+			return contacts, nil
+		}
+	}
 }
 
 // GetDeviceTime returns the current device time.
