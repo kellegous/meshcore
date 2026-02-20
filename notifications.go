@@ -153,6 +153,16 @@ func readNotification(code NotificationCode, data []byte) (Notification, error) 
 		return readBatteryVoltageNotification(data)
 	case NotificationTypeDeviceInfo:
 		return readDeviceInfoNotification(data)
+	case NotificationTypePrivateKey:
+		return readPrivateKeyNotification(data)
+	case NotificationTypeDisabled:
+		return readDisabledNotification(data)
+	case NotificationTypeChannelInfo:
+		return readChannelInfoNotification(data)
+	case NotificationTypeSignStart:
+		return readSignStartNotification(data)
+	case NotificationTypeSignature:
+		return readSignatureNotification(data)
 	}
 	return nil, poop.New("unknown notification code")
 }
@@ -426,6 +436,87 @@ func (e *DeviceInfoNotification) NotificationCode() NotificationCode {
 func readDeviceInfoNotification(data []byte) (*DeviceInfoNotification, error) {
 	var n DeviceInfoNotification
 	if err := n.DeviceInfo.readFrom(bytes.NewReader(data)); err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &n, nil
+}
+
+type PrivateKeyNotification struct {
+	PrivateKey [64]byte
+}
+
+func (e *PrivateKeyNotification) NotificationCode() NotificationCode {
+	return NotificationTypePrivateKey
+}
+
+func readPrivateKeyNotification(data []byte) (*PrivateKeyNotification, error) {
+	var n PrivateKeyNotification
+	r := bytes.NewReader(data)
+	if _, err := io.ReadFull(r, n.PrivateKey[:]); err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &n, nil
+}
+
+type DisabledNotification struct{}
+
+func (e *DisabledNotification) NotificationCode() NotificationCode {
+	return NotificationTypeDisabled
+}
+
+func readDisabledNotification(_ []byte) (*DisabledNotification, error) {
+	return &DisabledNotification{}, nil
+}
+
+type ChannelInfoNotification struct {
+	ChannelInfo ChannelInfo
+}
+
+func (e *ChannelInfoNotification) NotificationCode() NotificationCode {
+	return NotificationTypeChannelInfo
+}
+
+func readChannelInfoNotification(data []byte) (*ChannelInfoNotification, error) {
+	var n ChannelInfoNotification
+	if err := n.ChannelInfo.readFrom(bytes.NewReader(data)); err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &n, nil
+}
+
+type SignStartNotification struct {
+	MaxSignDataLen uint32
+}
+
+func (e *SignStartNotification) NotificationCode() NotificationCode {
+	return NotificationTypeSignStart
+}
+
+func readSignStartNotification(data []byte) (*SignStartNotification, error) {
+	var n SignStartNotification
+	r := bytes.NewReader(data)
+	var reserved byte
+	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
+		return nil, poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &n.MaxSignDataLen); err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &n, nil
+}
+
+type SignatureNotification struct {
+	Signature [64]byte
+}
+
+func (e *SignatureNotification) NotificationCode() NotificationCode {
+	return NotificationTypeSignature
+}
+
+func readSignatureNotification(data []byte) (*SignatureNotification, error) {
+	var n SignatureNotification
+	r := bytes.NewReader(data)
+	if _, err := io.ReadFull(r, n.Signature[:]); err != nil {
 		return nil, poop.Chain(err)
 	}
 	return &n, nil
