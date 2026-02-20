@@ -145,6 +145,14 @@ func readNotification(code NotificationCode, data []byte) (Notification, error) 
 		return readChannelMsgRecvNotification(data)
 	case NotificationTypeCurrTime:
 		return readCurrTimeNotification(data)
+	case NotificationTypeNoMoreMessages:
+		return readNoMoreMessagesNotification(data)
+	case NotificationTypeExportContact:
+		return readExportContactNotification(data)
+	case NotificationTypeBatteryVoltage:
+		return readBatteryVoltageNotification(data)
+	case NotificationTypeDeviceInfo:
+		return readDeviceInfoNotification(data)
 	}
 	return nil, poop.New("unknown notification code")
 }
@@ -155,7 +163,7 @@ func (e *OkNotification) NotificationCode() NotificationCode {
 	return NotificationTypeOk
 }
 
-func readOkNotification(data []byte) (*OkNotification, error) {
+func readOkNotification(_ []byte) (*OkNotification, error) {
 	return &OkNotification{}, nil
 }
 
@@ -192,7 +200,7 @@ func (e *ContactStartNotification) NotificationCode() NotificationCode {
 	return NotificationTypeContactsStart
 }
 
-func readContactStartNotification(data []byte) (*ContactStartNotification, error) {
+func readContactStartNotification(_ []byte) (*ContactStartNotification, error) {
 	return &ContactStartNotification{}, nil
 }
 
@@ -218,7 +226,7 @@ func (e *EndOfContactsNotification) NotificationCode() NotificationCode {
 	return NotificationTypeEndOfContacts
 }
 
-func readEndOfContactsNotification(data []byte) (*EndOfContactsNotification, error) {
+func readEndOfContactsNotification(_ []byte) (*EndOfContactsNotification, error) {
 	return &EndOfContactsNotification{}, nil
 }
 
@@ -360,6 +368,64 @@ func readCurrTimeNotification(data []byte) (*CurrTimeNotification, error) {
 	var err error
 	n.Time, err = readTime(bytes.NewReader(data))
 	if err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &n, nil
+}
+
+type NoMoreMessagesNotification struct{}
+
+func (e *NoMoreMessagesNotification) NotificationCode() NotificationCode {
+	return NotificationTypeNoMoreMessages
+}
+
+func readNoMoreMessagesNotification(data []byte) (*NoMoreMessagesNotification, error) {
+	return &NoMoreMessagesNotification{}, nil
+}
+
+type ExportContactNotification struct {
+	AdvertPacket []byte
+}
+
+func (e *ExportContactNotification) NotificationCode() NotificationCode {
+	return NotificationTypeExportContact
+}
+
+func readExportContactNotification(data []byte) (*ExportContactNotification, error) {
+	var n ExportContactNotification
+	n.AdvertPacket = make([]byte, len(data))
+	copy(n.AdvertPacket, data)
+	return &n, nil
+}
+
+type BatteryVoltageNotification struct {
+	Voltage uint16
+}
+
+func (e *BatteryVoltageNotification) NotificationCode() NotificationCode {
+	return NotificationTypeBatteryVoltage
+}
+
+func readBatteryVoltageNotification(data []byte) (*BatteryVoltageNotification, error) {
+	var n BatteryVoltageNotification
+	r := bytes.NewReader(data)
+	if err := binary.Read(r, binary.LittleEndian, &n.Voltage); err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &n, nil
+}
+
+type DeviceInfoNotification struct {
+	DeviceInfo DeviceInfo
+}
+
+func (e *DeviceInfoNotification) NotificationCode() NotificationCode {
+	return NotificationTypeDeviceInfo
+}
+
+func readDeviceInfoNotification(data []byte) (*DeviceInfoNotification, error) {
+	var n DeviceInfoNotification
+	if err := n.DeviceInfo.readFrom(bytes.NewReader(data)); err != nil {
 		return nil, poop.Chain(err)
 	}
 	return &n, nil
