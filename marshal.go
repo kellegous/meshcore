@@ -128,25 +128,6 @@ const (
 	ContactTypeRoom     ContactType = 3
 )
 
-type SentResponse struct {
-	Result         int8
-	ExpectedAckCRC uint32
-	EstTimeout     uint32
-}
-
-func (s *SentResponse) readFrom(r io.Reader) error {
-	if err := binary.Read(r, binary.LittleEndian, &s.Result); err != nil {
-		return poop.Chain(err)
-	}
-	if err := binary.Read(r, binary.LittleEndian, &s.ExpectedAckCRC); err != nil {
-		return poop.Chain(err)
-	}
-	if err := binary.Read(r, binary.LittleEndian, &s.EstTimeout); err != nil {
-		return poop.Chain(err)
-	}
-	return nil
-}
-
 type TelemetryResponse struct {
 	// Reserved byte
 	pubKeyPrefix  [6]byte

@@ -183,56 +183,54 @@ func (c *Conn) GetContacts(ctx context.Context, opts *GetContactsOptions) ([]*Co
 
 // GetDeviceTime returns the current device time.
 func (c *Conn) GetDeviceTime(ctx context.Context) (time.Time, error) {
-	var t time.Time
-	var err error
-
-	subs := expect(c.tx, func(code NotificationCode, data []byte) bool {
-		switch code {
-		case NotificationTypeCurrTime:
-			t, err = readTime(bytes.NewReader(data))
-		case NotificationTypeErr:
-			err = readError(data)
-		}
-		return false
-	}, NotificationTypeCurrTime, NotificationTypeErr)
-	defer subs.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeCurrTime, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeCommandCode(c.tx, CommandGetDeviceTime); err != nil {
 		return time.Time{}, poop.Chain(err)
 	}
 
-	if err := subs.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return time.Time{}, poop.Chain(err)
 	}
 
-	return t, err
+	switch t := res.(type) {
+	case *CurrTimeNotification:
+		return t.Time, nil
+	case *ErrNotification:
+		return time.Time{}, poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // GetBatteryVoltage returns the current battery voltage in millivolts.
 func (c *Conn) GetBatteryVoltage(ctx context.Context) (uint16, error) {
-	var voltage uint16
-	var err error
-
-	subs := expect(c.tx, func(code NotificationCode, data []byte) bool {
-		switch code {
-		case NotificationTypeBatteryVoltage:
-			err = binary.Read(bytes.NewReader(data), binary.LittleEndian, &voltage)
-		case NotificationTypeErr:
-			err = readError(data)
-		}
-		return false
-	}, NotificationTypeBatteryVoltage, NotificationTypeErr)
-	defer subs.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeBatteryVoltage, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeCommandCode(c.tx, CommandGetBatteryVoltage); err != nil {
 		return 0, poop.Chain(err)
 	}
 
-	if err := subs.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return 0, poop.Chain(err)
 	}
 
-	return voltage, err
+	switch t := res.(type) {
+	case *BatteryVoltageNotification:
+		return t.Voltage, nil
+	case *ErrNotification:
+		return 0, poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // SendTextMessage sends a text message to the recipient.
@@ -241,30 +239,29 @@ func (c *Conn) SendTextMessage(
 	recipient *PublicKey,
 	message string,
 	textType TextType,
-) (*SentResponse, error) {
-	var sr SentResponse
-	var err error
-
-	subs := expect(c.tx, func(code NotificationCode, data []byte) bool {
-		switch code {
-		case NotificationTypeSent:
-			sr.readFrom(bytes.NewReader(data))
-		case NotificationTypeErr:
-			err = readError(data)
-		}
-		return false
-	}, NotificationTypeSent, NotificationTypeErr)
-	defer subs.Unsubscribe()
+) (*SentNotification, error) {
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeSent, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeSendTextMessageCommand(c.tx, recipient, message, textType, 0, time.Now()); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	if err := subs.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	return &sr, err
+	switch t := res.(type) {
+	case *SentNotification:
+		return t, nil
+	case *ErrNotification:
+		return nil, poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // SendChannelTextMessage sends a text message to the given channel.
@@ -274,37 +271,28 @@ func (c *Conn) SendChannelTextMessage(
 	message string,
 	textType TextType,
 ) error {
-	var err error
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeOk, NotificationTypeErr),
+	)
+	defer done()
 
-	subs := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeOk:
-			case NotificationTypeErr:
-				err = readError(data)
-			}
-			return false
-		},
-		NotificationTypeOk,
-		NotificationTypeErr)
-	defer subs.Unsubscribe()
-
-	if err := writeSendChannelTextMessageCommand(
-		c.tx,
-		channelIndex,
-		message,
-		textType,
-		time.Now(),
-	); err != nil {
+	if err := writeSendChannelTextMessageCommand(c.tx, channelIndex, message, textType, time.Now()); err != nil {
 		return poop.Chain(err)
 	}
 
-	if err := subs.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return poop.Chain(err)
 	}
 
-	return err
+	switch t := res.(type) {
+	case *OkNotification:
+		return nil
+	case *ErrNotification:
+		return poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // GetTelemetry returns the telemetry data for the given contact key.
@@ -1024,8 +1012,8 @@ func (c *Conn) SendBinaryRequest(
 		func(code NotificationCode, data []byte) bool {
 			switch code {
 			case NotificationTypeSent:
-				var sr SentResponse
-				err = sr.readFrom(bytes.NewReader(data))
+				var sr *SentNotification
+				sr, err = readSentNotification(data)
 				if err == nil {
 					tag = sr.ExpectedAckCRC
 				}

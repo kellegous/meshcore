@@ -389,7 +389,7 @@ func TestSendTextMessage(t *testing.T) {
 	recipient := fakePublicKey(42)
 	message := "hello"
 	textType := TextTypePlain
-	expected := &SentResponse{
+	expected := &SentNotification{
 		Result:         0,
 		ExpectedAckCRC: 1234567890,
 		EstTimeout:     1000,
