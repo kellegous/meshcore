@@ -130,14 +130,14 @@ func TestGetContacts(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseContactsStart, nil)
+		controller.Notify(NotificationTypeContactsStart, nil)
 		for _, contact := range expected {
 			var buf bytes.Buffer
 			contact.writeTo(&buf)
-			controller.Notify(ResponseContact, buf.Bytes())
+			controller.Notify(NotificationTypeContact, buf.Bytes())
 		}
 
-		controller.Notify(ResponseEndOfContacts, nil)
+		controller.Notify(NotificationTypeEndOfContacts, nil)
 
 		controller.Wait()
 	})
@@ -162,8 +162,8 @@ func TestGetContacts(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseContactsStart, nil)
-		controller.Notify(ResponseEndOfContacts, nil)
+		controller.Notify(NotificationTypeContactsStart, nil)
+		controller.Notify(NotificationTypeEndOfContacts, nil)
 
 		controller.Wait()
 	})
@@ -188,7 +188,7 @@ func TestRemoveContact(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseOk, nil)
+		controller.Notify(NotificationTypeOk, nil)
 
 		controller.Wait()
 	})
@@ -208,7 +208,7 @@ func TestRemoveContact(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+		controller.Notify(NotificationTypeErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
 
 		controller.Wait()
 	})
@@ -238,7 +238,7 @@ func TestGetDeviceTime(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseCurrTime, BytesFrom(Time(expected, binary.LittleEndian)))
+		controller.Notify(NotificationTypeCurrTime, BytesFrom(Time(expected, binary.LittleEndian)))
 
 		controller.Wait()
 	})
@@ -257,7 +257,7 @@ func TestGetDeviceTime(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+		controller.Notify(NotificationTypeErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
 
 		controller.Wait()
 	})
@@ -285,7 +285,7 @@ func TestGetBatteryVoltage(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseBatteryVoltage, BytesFrom(Uint16(expected, binary.LittleEndian)))
+		controller.Notify(NotificationTypeBatteryVoltage, BytesFrom(Uint16(expected, binary.LittleEndian)))
 
 		controller.Wait()
 	})
@@ -304,7 +304,7 @@ func TestGetBatteryVoltage(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+		controller.Notify(NotificationTypeErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
 
 		controller.Wait()
 	})
@@ -346,7 +346,7 @@ func TestSendTextMessage(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseSent, BytesFrom(
+		controller.Notify(NotificationTypeSent, BytesFrom(
 			Byte(0),
 			Uint32(expected.ExpectedAckCRC, binary.LittleEndian),
 			Uint32(expected.EstTimeout, binary.LittleEndian),
@@ -385,7 +385,7 @@ func TestGetTelemetry(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	controller.Notify(PushTelemetryResponse, BytesFrom(
+	controller.Notify(NotificationTypeTelemetryResponse, BytesFrom(
 		Byte(0),
 		Bytes(key.Prefix(6)...),
 		Bytes(1, 2, 3),
@@ -426,7 +426,7 @@ func TestGetChannel(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseChannelInfo, BytesFrom(
+		controller.Notify(NotificationTypeChannelInfo, BytesFrom(
 			Byte(expected.Index),
 			CString(expected.Name, 32),
 			Bytes(expected.Secret...),
@@ -450,7 +450,7 @@ func TestGetChannel(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+		controller.Notify(NotificationTypeErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
 
 		controller.Wait()
 	})
@@ -481,7 +481,7 @@ func TestSetChannel(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	controller.Notify(ResponseOk, nil)
+	controller.Notify(NotificationTypeOk, nil)
 
 	controller.Wait()
 }
@@ -516,7 +516,7 @@ func TestDeviceQuery(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	controller.Notify(ResponseDeviceInfo, BytesFrom(
+	controller.Notify(NotificationTypeDeviceInfo, BytesFrom(
 		Byte(byte(expected.FirmwareVersion)),
 		Bytes(0, 0, 0, 0, 0, 0), // reserved 6 bytes
 		CString(expected.FirmwareBuildDate, 12),
@@ -565,7 +565,7 @@ func TestSyncNextMessage(t *testing.T) {
 		}
 
 		controller.Notify(
-			ResponseContactMsgRecv,
+			NotificationTypeContactMsgRecv,
 			BytesFrom(
 				Bytes(fromContact.PubKeyPrefix[:]...),
 				Byte(fromContact.PathLen),
@@ -600,7 +600,7 @@ func TestSyncNextMessage(t *testing.T) {
 		}
 
 		controller.Notify(
-			ResponseChannelMsgRecv,
+			NotificationTypeChannelMsgRecv,
 			BytesFrom(
 				Byte(fromChannel.ChannelIndex),
 				Byte(fromChannel.PathLen),
@@ -632,7 +632,7 @@ func TestSyncNextMessage(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseNoMoreMessages, nil)
+		controller.Notify(NotificationTypeNoMoreMessages, nil)
 
 		controller.Wait()
 	})
@@ -656,7 +656,7 @@ func TestSendAdvert(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseOk, nil)
+		controller.Notify(NotificationTypeOk, nil)
 
 		controller.Wait()
 	})
@@ -676,7 +676,7 @@ func TestSendAdvert(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseOk, nil)
+		controller.Notify(NotificationTypeOk, nil)
 
 		controller.Wait()
 	})
@@ -706,7 +706,7 @@ func TestExportContact(t *testing.T) {
 		}
 
 		controller.Notify(
-			ResponseExportContact,
+			NotificationTypeExportContact,
 			BytesFrom(Bytes(expected...)))
 
 		controller.Wait()
@@ -733,7 +733,7 @@ func TestExportContact(t *testing.T) {
 		}
 
 		controller.Notify(
-			ResponseExportContact,
+			NotificationTypeExportContact,
 			BytesFrom(Bytes(expected...)))
 
 		controller.Wait()
@@ -758,7 +758,7 @@ func TestShareContact(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseOk, nil)
+		controller.Notify(NotificationTypeOk, nil)
 
 		controller.Wait()
 	})
@@ -778,7 +778,7 @@ func TestShareContact(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseErr,
+		controller.Notify(NotificationTypeErr,
 			BytesFrom(Byte(byte(ErrorCodeFileIOError))))
 
 		controller.Wait()
@@ -809,7 +809,7 @@ func TestExportPrivateKey(t *testing.T) {
 		}
 
 		controller.Notify(
-			ResponsePrivateKey,
+			NotificationTypePrivateKey,
 			BytesFrom(Bytes(expected...)))
 
 		controller.Wait()
@@ -830,7 +830,7 @@ func TestExportPrivateKey(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseDisabled, nil)
+		controller.Notify(NotificationTypeDisabled, nil)
 
 		controller.Wait()
 	})
@@ -856,7 +856,7 @@ func TestImportPrivateKey(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseOk, nil)
+		controller.Notify(NotificationTypeOk, nil)
 
 		controller.Wait()
 	})
@@ -876,7 +876,7 @@ func TestImportPrivateKey(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseDisabled, nil)
+		controller.Notify(NotificationTypeDisabled, nil)
 
 		controller.Wait()
 	})
@@ -908,7 +908,7 @@ func TestGetStatus(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(PushStatusResponse, BytesFrom(
+		controller.Notify(NotificationTypeStatusResponse, BytesFrom(
 			Byte(0),
 			Bytes(key.Prefix(6)...),
 			Bytes(1, 2, 3),
@@ -946,7 +946,7 @@ func TestSendChannelTextMessage(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseOk, nil)
+		controller.Notify(NotificationTypeOk, nil)
 
 		controller.Wait()
 	})
@@ -974,7 +974,7 @@ func TestSendChannelTextMessage(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseErr,
+		controller.Notify(NotificationTypeErr,
 			BytesFrom(Byte(byte(ErrorCodeFileIOError))))
 
 		controller.Wait()
@@ -1000,7 +1000,7 @@ func TestSetAdvertLatLon(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseOk, nil)
+		controller.Notify(NotificationTypeOk, nil)
 
 		controller.Wait()
 	})
@@ -1020,7 +1020,7 @@ func TestSetAdvertLatLon(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseErr,
+		controller.Notify(NotificationTypeErr,
 			BytesFrom(Byte(byte(ErrorCodeFileIOError))))
 
 		controller.Wait()
@@ -1045,7 +1045,7 @@ func TestSetAdvertName(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseOk, nil)
+		controller.Notify(NotificationTypeOk, nil)
 
 		controller.Wait()
 	})
@@ -1065,7 +1065,7 @@ func TestSetAdvertName(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseErr,
+		controller.Notify(NotificationTypeErr,
 			BytesFrom(Byte(byte(ErrorCodeFileIOError))))
 
 		controller.Wait()
@@ -1090,7 +1090,7 @@ func TestSetDeviceTime(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseOk, nil)
+		controller.Notify(NotificationTypeOk, nil)
 
 		controller.Wait()
 	})
@@ -1110,7 +1110,7 @@ func TestSetDeviceTime(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseErr,
+		controller.Notify(NotificationTypeErr,
 			BytesFrom(Byte(byte(ErrorCodeFileIOError))))
 
 		controller.Wait()
@@ -1134,7 +1134,7 @@ func TestResetPath(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseOk, nil)
+		controller.Notify(NotificationTypeOk, nil)
 
 		controller.Wait()
 	})
@@ -1154,7 +1154,7 @@ func TestResetPath(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseErr,
+		controller.Notify(NotificationTypeErr,
 			BytesFrom(Byte(byte(ErrorCodeFileIOError))))
 
 		controller.Wait()
@@ -1189,7 +1189,7 @@ func TestSign(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseSignStart, BytesFrom(
+		controller.Notify(NotificationTypeSignStart, BytesFrom(
 			Byte(0),
 			Uint32(1024, binary.LittleEndian),
 		))
@@ -1202,7 +1202,7 @@ func TestSign(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseSignature, BytesFrom(Bytes(expected...)))
+		controller.Notify(NotificationTypeSignature, BytesFrom(Bytes(expected...)))
 
 		controller.Wait()
 	})
@@ -1225,7 +1225,7 @@ func TestSign(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseSignStart, BytesFrom(
+		controller.Notify(NotificationTypeSignStart, BytesFrom(
 			Byte(0),
 			Uint32(1024, binary.LittleEndian),
 		))
@@ -1238,7 +1238,7 @@ func TestSign(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseOk, nil)
+		controller.Notify(NotificationTypeOk, nil)
 
 		if err := ValidateBytes(
 			controller.Recv(),
@@ -1248,7 +1248,7 @@ func TestSign(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseSignature, BytesFrom(Bytes(expected...)))
+		controller.Notify(NotificationTypeSignature, BytesFrom(Bytes(expected...)))
 
 		controller.Wait()
 	})
@@ -1274,7 +1274,7 @@ func TestImportContact(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseOk, nil)
+		controller.Notify(NotificationTypeOk, nil)
 		controller.Wait()
 	})
 
@@ -1293,7 +1293,7 @@ func TestImportContact(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseErr,
+		controller.Notify(NotificationTypeErr,
 			BytesFrom(Byte(byte(ErrorCodeFileIOError))))
 
 		controller.Wait()
@@ -1337,7 +1337,7 @@ func TestGetSelfInfo(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseSelfInfo, BytesFrom(
+		controller.Notify(NotificationTypeSelfInfo, BytesFrom(
 			Byte(byte(expected.Type)),
 			Byte(expected.TxPower),
 			Byte(expected.MaxTxPower),
@@ -1372,7 +1372,7 @@ func TestGetSelfInfo(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseErr,
+		controller.Notify(NotificationTypeErr,
 			BytesFrom(Byte(byte(ErrorCodeFileIOError))))
 
 		controller.Wait()
@@ -1402,7 +1402,7 @@ func TestSetRadioParams(t *testing.T) {
 		); err != nil {
 			t.Fatal(err)
 		}
-		controller.Notify(ResponseOk, nil)
+		controller.Notify(NotificationTypeOk, nil)
 		controller.Wait()
 	})
 
@@ -1424,7 +1424,7 @@ func TestSetRadioParams(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+		controller.Notify(NotificationTypeErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
 		controller.Wait()
 	})
 }
@@ -1461,14 +1461,14 @@ func TestSendBinaryRequest(t *testing.T) {
 		}
 
 		// SentResponse
-		controller.Notify(ResponseSent, BytesFrom(
+		controller.Notify(NotificationTypeSent, BytesFrom(
 			Byte(0),
 			Uint32(tag, binary.LittleEndian),
 			Uint32(1000, binary.LittleEndian),
 		))
 
 		// BinaryResponse
-		controller.Notify(PushBinaryResponse, BytesFrom(
+		controller.Notify(NotificationTypeBinaryResponse, BytesFrom(
 			Byte(0),
 			Uint32(tag, binary.LittleEndian),
 			Bytes(payload...),
@@ -1493,7 +1493,7 @@ func TestSendBinaryRequest(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+		controller.Notify(NotificationTypeErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
 
 		controller.Wait()
 	})
@@ -1519,20 +1519,20 @@ func TestSendBinaryRequest(t *testing.T) {
 		}
 
 		// SentResponse
-		controller.Notify(ResponseSent, BytesFrom(
+		controller.Notify(NotificationTypeSent, BytesFrom(
 			Byte(0),
 			Uint32(tag, binary.LittleEndian),
 			Uint32(1000, binary.LittleEndian),
 		))
 
-		controller.Notify(PushBinaryResponse, BytesFrom(
+		controller.Notify(NotificationTypeBinaryResponse, BytesFrom(
 			Byte(0),
 			Uint32(tag+1, binary.LittleEndian), // errant tag
 			Bytes(payload...),
 		))
 
 		// BinaryResponse
-		controller.Notify(PushBinaryResponse, BytesFrom(
+		controller.Notify(NotificationTypeBinaryResponse, BytesFrom(
 			Byte(0),
 			Uint32(tag, binary.LittleEndian),
 			Bytes(payload...),
@@ -1560,7 +1560,7 @@ func TestSetTXPower(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseOk, nil)
+		controller.Notify(NotificationTypeOk, nil)
 
 		controller.Wait()
 	})
@@ -1580,7 +1580,7 @@ func TestSetTXPower(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+		controller.Notify(NotificationTypeErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
 
 		controller.Wait()
 	})
@@ -1603,7 +1603,7 @@ func TestSetOtherParams(t *testing.T) {
 		); err != nil {
 			t.Fatal(err)
 		}
-		controller.Notify(ResponseOk, nil)
+		controller.Notify(NotificationTypeOk, nil)
 		controller.Wait()
 	})
 
@@ -1621,7 +1621,7 @@ func TestSetOtherParams(t *testing.T) {
 		); err != nil {
 			t.Fatal(err)
 		}
-		controller.Notify(ResponseErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+		controller.Notify(NotificationTypeErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
 		controller.Wait()
 	})
 }
@@ -1680,13 +1680,13 @@ func TestGetNeighbours(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(ResponseSent, BytesFrom(
+		controller.Notify(NotificationTypeSent, BytesFrom(
 			Byte(0),
 			Uint32(tag, binary.LittleEndian),
 			Uint32(1000, binary.LittleEndian),
 		))
 
-		controller.Notify(PushBinaryResponse, BinaryResponseFrom(
+		controller.Notify(NotificationTypeBinaryResponse, BinaryResponseFrom(
 			tag,
 			Uint16(2, binary.LittleEndian),
 			Uint16(2, binary.LittleEndian),
@@ -1740,7 +1740,7 @@ func TestTracePath(t *testing.T) { // TODO: fix this test
 
 		expected.Tag = binary.LittleEndian.Uint32(tag)
 
-		controller.Notify(PushTraceData, BytesFrom(
+		controller.Notify(NotificationTypeTraceData, BytesFrom(
 			Byte(0),
 			Byte(expected.PathLen),
 			Byte(expected.Flags),
@@ -1775,7 +1775,7 @@ func TestTracePath(t *testing.T) { // TODO: fix this test
 
 		expected.Tag = binary.LittleEndian.Uint32(tag)
 
-		controller.Notify(ResponseErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+		controller.Notify(NotificationTypeErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
 
 		controller.Wait()
 	})
@@ -1805,7 +1805,7 @@ func TestTracePath(t *testing.T) { // TODO: fix this test
 		expected.Tag = binary.LittleEndian.Uint32(tag)
 
 		// tag does not match.
-		controller.Notify(PushTraceData, BytesFrom(
+		controller.Notify(NotificationTypeTraceData, BytesFrom(
 			Byte(0),
 			Byte(expected.PathLen),
 			Byte(expected.Flags),
@@ -1816,7 +1816,7 @@ func TestTracePath(t *testing.T) { // TODO: fix this test
 			Byte(byte(expected.LastSnr*4)),
 		))
 
-		controller.Notify(PushTraceData, BytesFrom(
+		controller.Notify(NotificationTypeTraceData, BytesFrom(
 			Byte(0),
 			Byte(expected.PathLen),
 			Byte(expected.Flags),
@@ -1849,7 +1849,7 @@ func TestLogin(t *testing.T) {
 		); err != nil {
 			t.Fatal(err)
 		}
-		controller.Notify(PushLoginSuccess, BytesFrom(
+		controller.Notify(NotificationTypeLoginSuccess, BytesFrom(
 			Byte(0),
 			Bytes(key.Prefix(6)...),
 		))
@@ -1872,7 +1872,7 @@ func TestLogin(t *testing.T) {
 		}
 
 		controller.Notify(
-			ResponseErr,
+			NotificationTypeErr,
 			BytesFrom(
 				Byte(byte(ErrorCodeFileIOError)),
 			))
@@ -1896,13 +1896,13 @@ func TestLogin(t *testing.T) {
 			t.Fatal(err)
 		}
 		controller.Notify(
-			PushLoginSuccess,
+			NotificationTypeLoginSuccess,
 			BytesFrom(
 				Byte(0),
 				Bytes(otherKey.Prefix(6)...),
 			))
 		controller.Notify(
-			PushLoginSuccess,
+			NotificationTypeLoginSuccess,
 			BytesFrom(
 				Byte(0),
 				Bytes(key.Prefix(6)...),
@@ -1933,7 +1933,7 @@ func TestOnAdvert(t *testing.T) {
 
 	<-subReady
 
-	controller.Notify(PushAdvert, BytesFrom(
+	controller.Notify(NotificationTypeAdvert, BytesFrom(
 		Bytes(key.Bytes()...),
 	))
 
@@ -1975,7 +1975,7 @@ func TestOnNewAdvert(t *testing.T) {
 
 	<-subReady
 
-	controller.Notify(PushNewAdvert, BytesFrom(
+	controller.Notify(NotificationTypeNewAdvert, BytesFrom(
 		Bytes(expected.PublicKey.Bytes()...),
 		Byte(byte(ContactTypeChat)),
 		Byte(0),

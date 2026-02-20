@@ -8,73 +8,75 @@ import (
 type NotificationCode byte
 
 const (
-	ResponseOk             NotificationCode = 0
-	ResponseErr            NotificationCode = 1
-	ResponseContactsStart  NotificationCode = 2
-	ResponseContact        NotificationCode = 3
-	ResponseEndOfContacts  NotificationCode = 4
-	ResponseSelfInfo       NotificationCode = 5
-	ResponseSent           NotificationCode = 6
-	ResponseContactMsgRecv NotificationCode = 7
-	ResponseChannelMsgRecv NotificationCode = 8
-	ResponseCurrTime       NotificationCode = 9
-	ResponseNoMoreMessages NotificationCode = 10
-	ResponseExportContact  NotificationCode = 11
-	ResponseBatteryVoltage NotificationCode = 12
-	ResponseDeviceInfo     NotificationCode = 13
-	ResponsePrivateKey     NotificationCode = 14
-	ResponseDisabled       NotificationCode = 15
-	ResponseChannelInfo    NotificationCode = 18
-	ResponseSignStart      NotificationCode = 19
-	ResponseSignature      NotificationCode = 20
-	PushAdvert             NotificationCode = 0x80 // when companion is set to auto add contacts
-	PushPathUpdated        NotificationCode = 0x81
-	PushSendConfirmed      NotificationCode = 0x82
-	PushMsgWaiting         NotificationCode = 0x83
-	PushRawData            NotificationCode = 0x84
-	PushLoginSuccess       NotificationCode = 0x85
-	PushLoginFail          NotificationCode = 0x86 // not usable yet
-	PushStatusResponse     NotificationCode = 0x87
-	PushLogRxData          NotificationCode = 0x88
-	PushTraceData          NotificationCode = 0x89
-	PushNewAdvert          NotificationCode = 0x8A // when companion is set to manually add contacts
-	PushTelemetryResponse  NotificationCode = 0x8B
-	PushBinaryResponse     NotificationCode = 0x8C
+	// Response notifications, arrive in response to a command.
+	NotificationTypeOk             NotificationCode = 0
+	NotificationTypeErr            NotificationCode = 1
+	NotificationTypeContactsStart  NotificationCode = 2
+	NotificationTypeContact        NotificationCode = 3
+	NotificationTypeEndOfContacts  NotificationCode = 4
+	NotificationTypeSelfInfo       NotificationCode = 5
+	NotificationTypeSent           NotificationCode = 6
+	NotificationTypeContactMsgRecv NotificationCode = 7
+	NotificationTypeChannelMsgRecv NotificationCode = 8
+	NotificationTypeCurrTime       NotificationCode = 9
+	NotificationTypeNoMoreMessages NotificationCode = 10
+	NotificationTypeExportContact  NotificationCode = 11
+	NotificationTypeBatteryVoltage NotificationCode = 12
+	NotificationTypeDeviceInfo     NotificationCode = 13
+	NotificationTypePrivateKey     NotificationCode = 14
+	NotificationTypeDisabled       NotificationCode = 15
+	NotificationTypeChannelInfo    NotificationCode = 18
+	NotificationTypeSignStart      NotificationCode = 19
+	NotificationTypeSignature      NotificationCode = 20
+	// Push notifications, can arrive without a corresponding command.
+	NotificationTypeAdvert            NotificationCode = 0x80 // when companion is set to auto add contacts
+	NotificationTypePathUpdated       NotificationCode = 0x81
+	NotificationTypeSendConfirmed     NotificationCode = 0x82
+	NotificationTypeMsgWaiting        NotificationCode = 0x83
+	NotificationTypeRawData           NotificationCode = 0x84
+	NotificationTypeLoginSuccess      NotificationCode = 0x85
+	NotificationTypeLoginFail         NotificationCode = 0x86 // not usable yet
+	NotificationTypeStatusResponse    NotificationCode = 0x87
+	NotificationTypeLogRxData         NotificationCode = 0x88
+	NotificationTypeTraceData         NotificationCode = 0x89
+	NotificationTypeNewAdvert         NotificationCode = 0x8A // when companion is set to manually add contacts
+	NotificationTypeTelemetryResponse NotificationCode = 0x8B
+	NotificationTypeBinaryResponse    NotificationCode = 0x8C
 )
 
 var notificationCodeText = map[NotificationCode]string{
-	ResponseOk:             "Ok",
-	ResponseErr:            "Err",
-	ResponseContactsStart:  "ContactsStart",
-	ResponseContact:        "Contact",
-	ResponseEndOfContacts:  "EndOfContacts",
-	ResponseSelfInfo:       "SelfInfo",
-	ResponseSent:           "Sent",
-	ResponseContactMsgRecv: "ContactMsgRecv",
-	ResponseChannelMsgRecv: "ChannelMsgRecv",
-	ResponseCurrTime:       "CurrTime",
-	ResponseNoMoreMessages: "NoMoreMessages",
-	ResponseExportContact:  "ExportContact",
-	ResponseBatteryVoltage: "BatteryVoltage",
-	ResponseDeviceInfo:     "DeviceInfo",
-	ResponsePrivateKey:     "PrivateKey",
-	ResponseDisabled:       "Disabled",
-	ResponseChannelInfo:    "ChannelInfo",
-	ResponseSignStart:      "SignStart",
-	ResponseSignature:      "Signature",
-	PushAdvert:             "PushAdvert",
-	PushPathUpdated:        "PushPathUpdated",
-	PushSendConfirmed:      "PushSendConfirmed",
-	PushMsgWaiting:         "PushMsgWaiting",
-	PushRawData:            "PushRawData",
-	PushLoginSuccess:       "PushLoginSuccess",
-	PushLoginFail:          "PushLoginFail",
-	PushStatusResponse:     "PushStatusResponse",
-	PushLogRxData:          "PushLogRxData",
-	PushTraceData:          "PushTraceData",
-	PushNewAdvert:          "PushNewAdvert",
-	PushTelemetryResponse:  "PushTelemetryResponse",
-	PushBinaryResponse:     "PushBinaryResponse",
+	NotificationTypeOk:                "Ok",
+	NotificationTypeErr:               "Err",
+	NotificationTypeContactsStart:     "ContactsStart",
+	NotificationTypeContact:           "Contact",
+	NotificationTypeEndOfContacts:     "EndOfContacts",
+	NotificationTypeSelfInfo:          "SelfInfo",
+	NotificationTypeSent:              "Sent",
+	NotificationTypeContactMsgRecv:    "ContactMsgRecv",
+	NotificationTypeChannelMsgRecv:    "ChannelMsgRecv",
+	NotificationTypeCurrTime:          "CurrTime",
+	NotificationTypeNoMoreMessages:    "NoMoreMessages",
+	NotificationTypeExportContact:     "ExportContact",
+	NotificationTypeBatteryVoltage:    "BatteryVoltage",
+	NotificationTypeDeviceInfo:        "DeviceInfo",
+	NotificationTypePrivateKey:        "PrivateKey",
+	NotificationTypeDisabled:          "Disabled",
+	NotificationTypeChannelInfo:       "ChannelInfo",
+	NotificationTypeSignStart:         "SignStart",
+	NotificationTypeSignature:         "Signature",
+	NotificationTypeAdvert:            "PushAdvert",
+	NotificationTypePathUpdated:       "PushPathUpdated",
+	NotificationTypeSendConfirmed:     "PushSendConfirmed",
+	NotificationTypeMsgWaiting:        "PushMsgWaiting",
+	NotificationTypeRawData:           "PushRawData",
+	NotificationTypeLoginSuccess:      "PushLoginSuccess",
+	NotificationTypeLoginFail:         "PushLoginFail",
+	NotificationTypeStatusResponse:    "PushStatusResponse",
+	NotificationTypeLogRxData:         "PushLogRxData",
+	NotificationTypeTraceData:         "PushTraceData",
+	NotificationTypeNewAdvert:         "PushNewAdvert",
+	NotificationTypeTelemetryResponse: "PushTelemetryResponse",
+	NotificationTypeBinaryResponse:    "PushBinaryResponse",
 }
 
 func (c NotificationCode) String() string {

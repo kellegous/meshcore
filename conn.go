@@ -84,12 +84,12 @@ func (c *Conn) AddOrUpdateContact(ctx context.Context, contact *Contact) error {
 
 	subs := expect(c.tx, func(code NotificationCode, data []byte) bool {
 		switch code {
-		case ResponseOk:
-		case ResponseErr:
+		case NotificationTypeOk:
+		case NotificationTypeErr:
 			err = readError(data)
 		}
 		return false
-	}, ResponseOk, ResponseErr)
+	}, NotificationTypeOk, NotificationTypeErr)
 	defer subs.Unsubscribe()
 
 	if err := writeAddOrUpdateContactCommand(c.tx, contact); err != nil {
@@ -109,12 +109,12 @@ func (c *Conn) RemoveContact(ctx context.Context, key *PublicKey) error {
 
 	subs := expect(c.tx, func(code NotificationCode, data []byte) bool {
 		switch code {
-		case ResponseOk:
-		case ResponseErr:
+		case NotificationTypeOk:
+		case NotificationTypeErr:
 			err = readError(data)
 		}
 		return false
-	}, ResponseOk, ResponseErr)
+	}, NotificationTypeOk, NotificationTypeErr)
 	defer subs.Unsubscribe()
 
 	if err := writeRemoveContactCommand(c.tx, key); err != nil {
@@ -145,27 +145,27 @@ func (c *Conn) GetContacts(ctx context.Context, opts *GetContactsOptions) ([]*Co
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case ResponseContactsStart:
+			case NotificationTypeContactsStart:
 				return true
-			case ResponseErr:
+			case NotificationTypeErr:
 				err = readError(data)
 				return false
-			case ResponseContact:
+			case NotificationTypeContact:
 				var contact Contact
 				if err := contact.readFrom(bytes.NewReader(data)); err != nil {
 					return false
 				}
 				contacts = append(contacts, &contact)
 				return true
-			case ResponseEndOfContacts:
+			case NotificationTypeEndOfContacts:
 				return false
 			}
 			panic("unreachable")
 		},
-		ResponseContactsStart,
-		ResponseContact,
-		ResponseEndOfContacts,
-		ResponseErr)
+		NotificationTypeContactsStart,
+		NotificationTypeContact,
+		NotificationTypeEndOfContacts,
+		NotificationTypeErr)
 	defer subs.Unsubscribe()
 
 	if err := writeGetContactsCommand(c.tx, opts.Since); err != nil {
@@ -186,13 +186,13 @@ func (c *Conn) GetDeviceTime(ctx context.Context) (time.Time, error) {
 
 	subs := expect(c.tx, func(code NotificationCode, data []byte) bool {
 		switch code {
-		case ResponseCurrTime:
+		case NotificationTypeCurrTime:
 			t, err = readTime(bytes.NewReader(data))
-		case ResponseErr:
+		case NotificationTypeErr:
 			err = readError(data)
 		}
 		return false
-	}, ResponseCurrTime, ResponseErr)
+	}, NotificationTypeCurrTime, NotificationTypeErr)
 	defer subs.Unsubscribe()
 
 	if err := writeCommandCode(c.tx, CommandGetDeviceTime); err != nil {
@@ -213,13 +213,13 @@ func (c *Conn) GetBatteryVoltage(ctx context.Context) (uint16, error) {
 
 	subs := expect(c.tx, func(code NotificationCode, data []byte) bool {
 		switch code {
-		case ResponseBatteryVoltage:
+		case NotificationTypeBatteryVoltage:
 			err = binary.Read(bytes.NewReader(data), binary.LittleEndian, &voltage)
-		case ResponseErr:
+		case NotificationTypeErr:
 			err = readError(data)
 		}
 		return false
-	}, ResponseBatteryVoltage, ResponseErr)
+	}, NotificationTypeBatteryVoltage, NotificationTypeErr)
 	defer subs.Unsubscribe()
 
 	if err := writeCommandCode(c.tx, CommandGetBatteryVoltage); err != nil {
@@ -245,13 +245,13 @@ func (c *Conn) SendTextMessage(
 
 	subs := expect(c.tx, func(code NotificationCode, data []byte) bool {
 		switch code {
-		case ResponseSent:
+		case NotificationTypeSent:
 			sr.readFrom(bytes.NewReader(data))
-		case ResponseErr:
+		case NotificationTypeErr:
 			err = readError(data)
 		}
 		return false
-	}, ResponseSent, ResponseErr)
+	}, NotificationTypeSent, NotificationTypeErr)
 	defer subs.Unsubscribe()
 
 	if err := writeSendTextMessageCommand(c.tx, recipient, message, textType, 0, time.Now()); err != nil {
@@ -278,14 +278,14 @@ func (c *Conn) SendChannelTextMessage(
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case ResponseOk:
-			case ResponseErr:
+			case NotificationTypeOk:
+			case NotificationTypeErr:
 				err = readError(data)
 			}
 			return false
 		},
-		ResponseOk,
-		ResponseErr)
+		NotificationTypeOk,
+		NotificationTypeErr)
 	defer subs.Unsubscribe()
 
 	if err := writeSendChannelTextMessageCommand(
@@ -317,15 +317,15 @@ func (c *Conn) GetTelemetry(
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case PushTelemetryResponse:
+			case NotificationTypeTelemetryResponse:
 				err = telemetry.readFrom(bytes.NewReader(data))
-			case ResponseErr:
+			case NotificationTypeErr:
 				err = readError(data)
 			}
 			return false
 		},
-		PushTelemetryResponse,
-		ResponseErr)
+		NotificationTypeTelemetryResponse,
+		NotificationTypeErr)
 	defer subs.Unsubscribe()
 
 	if err := writeGetTelemetryCommand(c.tx, key); err != nil {
@@ -351,15 +351,15 @@ func (c *Conn) GetChannel(
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case ResponseChannelInfo:
+			case NotificationTypeChannelInfo:
 				err = channel.readFrom(bytes.NewReader(data))
-			case ResponseErr:
+			case NotificationTypeErr:
 				err = readError(data)
 			}
 			return false
 		},
-		ResponseChannelInfo,
-		ResponseErr)
+		NotificationTypeChannelInfo,
+		NotificationTypeErr)
 	defer subs.Unsubscribe()
 
 	if err := writeGetChannelCommand(c.tx, idx); err != nil {
@@ -400,14 +400,14 @@ func (c *Conn) SetChannel(ctx context.Context, channel *ChannelInfo) error {
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case ResponseOk:
-			case ResponseErr:
+			case NotificationTypeOk:
+			case NotificationTypeErr:
 				err = readError(data)
 			}
 			return false
 		},
-		ResponseOk,
-		ResponseErr)
+		NotificationTypeOk,
+		NotificationTypeErr)
 	defer subs.Unsubscribe()
 
 	if err := writeSetChannelCommand(c.tx, channel); err != nil {
@@ -440,15 +440,15 @@ func (c *Conn) DeviceQuery(ctx context.Context, appTargetVer byte) (*DeviceInfo,
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case ResponseDeviceInfo:
+			case NotificationTypeDeviceInfo:
 				err = deviceInfo.readFrom(bytes.NewReader(data))
-			case ResponseErr:
+			case NotificationTypeErr:
 				err = readError(data)
 			}
 			return false
 		},
-		ResponseDeviceInfo,
-		ResponseErr)
+		NotificationTypeDeviceInfo,
+		NotificationTypeErr)
 	defer subs.Unsubscribe()
 
 	if err := writeDeviceQueryCommand(c.tx, appTargetVer); err != nil {
@@ -486,28 +486,28 @@ func (c *Conn) SyncNextMessage(ctx context.Context) (Message, error) {
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case ResponseContactMsgRecv:
+			case NotificationTypeContactMsgRecv:
 				var contactMessage ContactMessage
 				err = contactMessage.readFrom(bytes.NewReader(data))
 				if err == nil {
 					message = &contactMessage
 				}
-			case ResponseChannelMsgRecv:
+			case NotificationTypeChannelMsgRecv:
 				var channelMessage ChannelMessage
 				err = channelMessage.readFrom(bytes.NewReader(data))
 				if err == nil {
 					message = &channelMessage
 				}
-			case ResponseErr:
+			case NotificationTypeErr:
 				err = readError(data)
-			case ResponseNoMoreMessages:
+			case NotificationTypeNoMoreMessages:
 			}
 			return false
 		},
-		ResponseContactMsgRecv,
-		ResponseChannelMsgRecv,
-		ResponseErr,
-		ResponseNoMoreMessages)
+		NotificationTypeContactMsgRecv,
+		NotificationTypeChannelMsgRecv,
+		NotificationTypeErr,
+		NotificationTypeNoMoreMessages)
 	defer subs.Unsubscribe()
 
 	if err := writeCommandCode(c.tx, CommandSyncNextMessage); err != nil {
@@ -529,14 +529,14 @@ func (c *Conn) SendAdvert(ctx context.Context, advertType SelfAdvertType) error 
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case ResponseOk:
-			case ResponseErr:
+			case NotificationTypeOk:
+			case NotificationTypeErr:
 				err = readError(data)
 			}
 			return false
 		},
-		ResponseOk,
-		ResponseErr)
+		NotificationTypeOk,
+		NotificationTypeErr)
 	defer subs.Unsubscribe()
 
 	if err := writeSendAdvertCommand(c.tx, advertType); err != nil {
@@ -558,14 +558,14 @@ func (c *Conn) ExportContact(ctx context.Context, key *PublicKey) ([]byte, error
 
 	subs := expect(c.tx, func(code NotificationCode, data []byte) bool {
 		switch code {
-		case ResponseExportContact:
+		case NotificationTypeExportContact:
 			advertPacket = make([]byte, len(data))
 			copy(advertPacket, data)
-		case ResponseErr:
+		case NotificationTypeErr:
 			err = readError(data)
 		}
 		return false
-	}, ResponseExportContact, ResponseErr)
+	}, NotificationTypeExportContact, NotificationTypeErr)
 	defer subs.Unsubscribe()
 
 	if err := writeExportContactCommand(c.tx, key); err != nil {
@@ -587,14 +587,14 @@ func (c *Conn) ImportContact(ctx context.Context, advertPacket []byte) error {
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case ResponseOk:
-			case ResponseErr:
+			case NotificationTypeOk:
+			case NotificationTypeErr:
 				err = readError(data)
 			}
 			return false
 		},
-		ResponseOk,
-		ResponseErr)
+		NotificationTypeOk,
+		NotificationTypeErr)
 	defer subs.Unsubscribe()
 
 	if err := writeImportContactCommand(c.tx, advertPacket); err != nil {
@@ -616,12 +616,12 @@ func (c *Conn) ShareContact(ctx context.Context, key PublicKey) error {
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case ResponseOk:
-			case ResponseErr:
+			case NotificationTypeOk:
+			case NotificationTypeErr:
 				err = readError(data)
 			}
 			return false
-		}, ResponseOk, ResponseErr)
+		}, NotificationTypeOk, NotificationTypeErr)
 	defer subs.Unsubscribe()
 
 	if err := writeShareContactCommand(c.tx, &key); err != nil {
@@ -644,18 +644,18 @@ func (c *Conn) ExportPrivateKey(ctx context.Context) ([]byte, error) {
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case ResponsePrivateKey:
+			case NotificationTypePrivateKey:
 				_, err = io.ReadFull(bytes.NewReader(data), privateKey[:])
-			case ResponseDisabled:
+			case NotificationTypeDisabled:
 				err = poop.New("private key is disabled")
-			case ResponseErr:
+			case NotificationTypeErr:
 				err = readError(data)
 			}
 			return false
 		},
-		ResponsePrivateKey,
-		ResponseDisabled,
-		ResponseErr)
+		NotificationTypePrivateKey,
+		NotificationTypeDisabled,
+		NotificationTypeErr)
 	defer subs.Unsubscribe()
 
 	if err := writeCommandCode(c.tx, CommandExportPrivateKey); err != nil {
@@ -677,14 +677,14 @@ func (c *Conn) ImportPrivateKey(ctx context.Context, privateKey []byte) error {
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case ResponseOk:
-			case ResponseDisabled:
+			case NotificationTypeOk:
+			case NotificationTypeDisabled:
 				err = poop.New("private key is disabled")
-			case ResponseErr:
+			case NotificationTypeErr:
 				err = readError(data)
 			}
 			return false
-		}, ResponseOk, ResponseDisabled, ResponseErr)
+		}, NotificationTypeOk, NotificationTypeDisabled, NotificationTypeErr)
 	defer subs.Unsubscribe()
 
 	if err := writeImportPrivateKeyCommand(c.tx, privateKey); err != nil {
@@ -711,15 +711,15 @@ func (c *Conn) GetStatus(ctx context.Context, key PublicKey) (*StatusResponse, e
 			// TODO(kellegous): Why is this a push event?
 			// TODO(kellegous): We should reject responses where the key prefix
 			// doesn't match the given key.
-			case PushStatusResponse:
+			case NotificationTypeStatusResponse:
 				err = status.readFrom(bytes.NewReader(data))
-			case ResponseErr:
+			case NotificationTypeErr:
 				err = readError(data)
 			}
 			return false
 		},
-		PushStatusResponse,
-		ResponseErr)
+		NotificationTypeStatusResponse,
+		NotificationTypeErr)
 	defer expect.Unsubscribe()
 
 	if err := writeGetStatusCommand(c.tx, &key); err != nil {
@@ -741,14 +741,14 @@ func (c *Conn) SetAdvertLatLon(ctx context.Context, lat float64, lon float64) er
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case ResponseOk:
-			case ResponseErr:
+			case NotificationTypeOk:
+			case NotificationTypeErr:
 				err = readError(data)
 			}
 			return false
 		},
-		ResponseOk,
-		ResponseErr)
+		NotificationTypeOk,
+		NotificationTypeErr)
 	defer expect.Unsubscribe()
 
 	if err := writeSetAdvertLatLonCommand(c.tx, lat, lon); err != nil {
@@ -770,14 +770,14 @@ func (c *Conn) SetAdvertName(ctx context.Context, name string) error {
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case ResponseOk:
-			case ResponseErr:
+			case NotificationTypeOk:
+			case NotificationTypeErr:
 				err = readError(data)
 			}
 			return false
 		},
-		ResponseOk,
-		ResponseErr)
+		NotificationTypeOk,
+		NotificationTypeErr)
 	defer expect.Unsubscribe()
 
 	if err := writeSetAdvertNameCommand(c.tx, name); err != nil {
@@ -799,14 +799,14 @@ func (c *Conn) SetDeviceTime(ctx context.Context, time time.Time) error {
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case ResponseOk:
-			case ResponseErr:
+			case NotificationTypeOk:
+			case NotificationTypeErr:
 				err = readError(data)
 			}
 			return false
 		},
-		ResponseOk,
-		ResponseErr)
+		NotificationTypeOk,
+		NotificationTypeErr)
 	defer expect.Unsubscribe()
 
 	if err := writeSetDeviceTimeCommand(c.tx, time); err != nil {
@@ -828,14 +828,14 @@ func (c *Conn) ResetPath(ctx context.Context, key PublicKey) error {
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case ResponseOk:
-			case ResponseErr:
+			case NotificationTypeOk:
+			case NotificationTypeErr:
 				err = readError(data)
 			}
 			return false
 		},
-		ResponseOk,
-		ResponseErr)
+		NotificationTypeOk,
+		NotificationTypeErr)
 	defer expect.Unsubscribe()
 
 	if err := writeResetPathCommand(c.tx, &key); err != nil {
@@ -856,13 +856,13 @@ func (c *Conn) GetSelfInfo(ctx context.Context) (*SelfInfoResponse, error) {
 
 	ch := make(chan struct{})
 
-	unsubSelfInfo := c.tx.Subscribe(ResponseSelfInfo, func(data []byte) {
+	unsubSelfInfo := c.tx.Subscribe(NotificationTypeSelfInfo, func(data []byte) {
 		err = selfInfo.readFrom(bytes.NewReader(data))
 		close(ch)
 	})
 	defer unsubSelfInfo()
 
-	unsubErr := c.tx.Subscribe(ResponseErr, func(data []byte) {
+	unsubErr := c.tx.Subscribe(NotificationTypeErr, func(data []byte) {
 		err = readError(data)
 		close(ch)
 	})
@@ -929,29 +929,29 @@ func (c *Conn) Sign(ctx context.Context, data []byte) ([]byte, error) {
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case ResponseSignStart:
+			case NotificationTypeSignStart:
 				err = onSignStart(data)
 				return err == nil
-			case ResponseOk:
+			case NotificationTypeOk:
 				err = onOk()
 				return err == nil
-			case ResponseSignature:
+			case NotificationTypeSignature:
 				var res SignatureResponse
 				err = res.readFrom(bytes.NewReader(data))
 				if err == nil {
 					signature = res.Signature[:]
 				}
 				return false
-			case ResponseErr:
+			case NotificationTypeErr:
 				err = readError(data)
 				return false
 			}
 			panic("unreachable")
 		},
-		ResponseSignStart,
-		ResponseOk,
-		ResponseSignature,
-		ResponseErr)
+		NotificationTypeSignStart,
+		NotificationTypeOk,
+		NotificationTypeSignature,
+		NotificationTypeErr)
 	defer subs.Unsubscribe()
 
 	if err := writeCommandCode(c.tx, CommandSignStart); err != nil {
@@ -979,14 +979,14 @@ func (c *Conn) SetRadioParams(
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case ResponseOk:
-			case ResponseErr:
+			case NotificationTypeOk:
+			case NotificationTypeErr:
 				err = readError(data)
 			}
 			return false
 		},
-		ResponseOk,
-		ResponseErr)
+		NotificationTypeOk,
+		NotificationTypeErr)
 	defer expect.Unsubscribe()
 
 	if err := writeSetRadioParamsCommand(
@@ -1021,14 +1021,14 @@ func (c *Conn) SendBinaryRequest(
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case ResponseSent:
+			case NotificationTypeSent:
 				var sr SentResponse
 				err = sr.readFrom(bytes.NewReader(data))
 				if err == nil {
 					tag = sr.ExpectedAckCRC
 				}
 				return err == nil
-			case PushBinaryResponse:
+			case NotificationTypeBinaryResponse:
 				err = binaryResponse.readFrom(bytes.NewReader(data))
 				if err != nil {
 					return false
@@ -1037,15 +1037,15 @@ func (c *Conn) SendBinaryRequest(
 					return true
 				}
 				return false
-			case ResponseErr:
+			case NotificationTypeErr:
 				err = readError(data)
 				return false
 			}
 			return false
 		},
-		PushBinaryResponse,
-		ResponseSent,
-		ResponseErr)
+		NotificationTypeBinaryResponse,
+		NotificationTypeSent,
+		NotificationTypeErr)
 	defer expect.Unsubscribe()
 
 	if err := writeSendBinaryRequestCommand(c.tx, recipient, payload); err != nil {
@@ -1067,14 +1067,14 @@ func (c *Conn) SetTXPower(ctx context.Context, power byte) error {
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case ResponseOk:
-			case ResponseErr:
+			case NotificationTypeOk:
+			case NotificationTypeErr:
 				err = readError(data)
 			}
 			return false
 		},
-		ResponseOk,
-		ResponseErr)
+		NotificationTypeOk,
+		NotificationTypeErr)
 	defer expect.Unsubscribe()
 
 	if err := writeSetTXPowerCommand(c.tx, power); err != nil {
@@ -1096,14 +1096,14 @@ func (c *Conn) SetOtherParams(ctx context.Context, manualAddContacts bool) error
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case ResponseOk:
-			case ResponseErr:
+			case NotificationTypeOk:
+			case NotificationTypeErr:
 				err = readError(data)
 			}
 			return false
 		},
-		ResponseOk,
-		ResponseErr)
+		NotificationTypeOk,
+		NotificationTypeErr)
 	defer expect.Unsubscribe()
 
 	if err := writeSetOtherParamsCommand(c.tx, manualAddContacts); err != nil {
@@ -1201,7 +1201,7 @@ func (c *Conn) TracePath(ctx context.Context, path []byte) (*TraceData, error) {
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case PushTraceData:
+			case NotificationTypeTraceData:
 				err = traceData.readFrom(bytes.NewReader(data))
 				if err != nil {
 					return false
@@ -1210,13 +1210,13 @@ func (c *Conn) TracePath(ctx context.Context, path []byte) (*TraceData, error) {
 					// not the right data, continue
 					return true
 				}
-			case ResponseErr:
+			case NotificationTypeErr:
 				err = readError(data)
 			}
 			return false
 		},
-		PushTraceData,
-		ResponseErr)
+		NotificationTypeTraceData,
+		NotificationTypeErr)
 	defer expect.Unsubscribe()
 
 	if err := writeSendTracePathCommand(c.tx, tag, 0 /* auth */, path); err != nil {
@@ -1238,7 +1238,7 @@ func (c *Conn) Login(ctx context.Context, key PublicKey, password string) error 
 		c.tx,
 		func(code NotificationCode, data []byte) bool {
 			switch code {
-			case PushLoginSuccess:
+			case NotificationTypeLoginSuccess:
 				err = loginSuccess.readFrom(bytes.NewReader(data))
 				if err != nil {
 					return false
@@ -1247,13 +1247,13 @@ func (c *Conn) Login(ctx context.Context, key PublicKey, password string) error 
 					// not the right data, continue waiting
 					return true
 				}
-			case ResponseErr:
+			case NotificationTypeErr:
 				err = readError(data)
 			}
 			return false
 		},
-		PushLoginSuccess,
-		ResponseErr)
+		NotificationTypeLoginSuccess,
+		NotificationTypeErr)
 	defer expect.Unsubscribe()
 
 	if err := writeLoginCommand(c.tx, key, password); err != nil {
@@ -1269,7 +1269,7 @@ func (c *Conn) Login(ctx context.Context, key PublicKey, password string) error 
 
 // OnAdvert subscribes to advert events.
 func (c *Conn) OnAdvert(fn func(*AdvertEvent)) func() {
-	return c.tx.Subscribe(PushAdvert, func(data []byte) {
+	return c.tx.Subscribe(NotificationTypeAdvert, func(data []byte) {
 		// TODO(kellegous): Errors should be propagated to the
 		// receive error callback in the transport.
 		var advertEvent AdvertEvent
@@ -1281,7 +1281,7 @@ func (c *Conn) OnAdvert(fn func(*AdvertEvent)) func() {
 }
 
 func (c *Conn) OnNewAdvert(fn func(*NewAdvertEvent)) func() {
-	return c.tx.Subscribe(PushNewAdvert, func(data []byte) {
+	return c.tx.Subscribe(NotificationTypeNewAdvert, func(data []byte) {
 		// TODO(kellegous): Errors should be propagated to the
 		// receive error callback in the transport.
 		var newAdvertEvent NewAdvertEvent
@@ -1294,7 +1294,7 @@ func (c *Conn) OnNewAdvert(fn func(*NewAdvertEvent)) func() {
 
 // OnPathUpdated subscribes to path updated events.
 func (c *Conn) OnPathUpdated(fn func(*PathUpdatedEvent)) func() {
-	return c.tx.Subscribe(PushPathUpdated, func(data []byte) {
+	return c.tx.Subscribe(NotificationTypePathUpdated, func(data []byte) {
 		// TODO(kellegous): Errors should be propagated to the
 		// receive error callback in the transport.
 		var pathUpdatedEvent PathUpdatedEvent
