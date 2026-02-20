@@ -163,6 +163,10 @@ func readNotification(code NotificationCode, data []byte) (Notification, error) 
 		return readSignStartNotification(data)
 	case NotificationTypeSignature:
 		return readSignatureNotification(data)
+	case NotificationTypeAdvert:
+		return readAdvertNotification(data)
+	case NotificationTypePathUpdated:
+		return readPathUpdatedNotification(data)
 	}
 	return nil, poop.New("unknown notification code")
 }
@@ -517,6 +521,38 @@ func readSignatureNotification(data []byte) (*SignatureNotification, error) {
 	var n SignatureNotification
 	r := bytes.NewReader(data)
 	if _, err := io.ReadFull(r, n.Signature[:]); err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &n, nil
+}
+
+type AdvertNotification struct {
+	PublicKey PublicKey
+}
+
+func (e *AdvertNotification) NotificationCode() NotificationCode {
+	return NotificationTypeAdvert
+}
+
+func readAdvertNotification(data []byte) (*AdvertNotification, error) {
+	var n AdvertNotification
+	if err := n.PublicKey.readFrom(bytes.NewReader(data)); err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &n, nil
+}
+
+type PathUpdatedNotification struct {
+	PublicKey PublicKey
+}
+
+func (e *PathUpdatedNotification) NotificationCode() NotificationCode {
+	return NotificationTypePathUpdated
+}
+
+func readPathUpdatedNotification(data []byte) (*PathUpdatedNotification, error) {
+	var n PathUpdatedNotification
+	if err := n.PublicKey.readFrom(bytes.NewReader(data)); err != nil {
 		return nil, poop.Chain(err)
 	}
 	return &n, nil
