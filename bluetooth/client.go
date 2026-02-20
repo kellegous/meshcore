@@ -123,6 +123,6 @@ func (c *Client) Connect(
 	return meshcore.NewConnection(&tx{
 		device:   device,
 		toDevice: toDevice,
-		notifier: notifier,
+		Notifier: notifier,
 	}), nil
 }

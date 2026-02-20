@@ -12,9 +12,9 @@ import (
 )
 
 type fakeTransport struct {
-	ch       chan []byte
-	done     chan struct{}
-	notifier *Notifier
+	ch   chan []byte
+	done chan struct{}
+	*Notifier
 }
 
 var _ Transport = (*fakeTransport)(nil)
@@ -28,17 +28,13 @@ func (t *fakeTransport) Disconnect() error {
 	return nil
 }
 
-func (t *fakeTransport) Notifier() *Notifier {
-	return t.notifier
-}
-
 func DoCommand(
 	op func(conn *Conn),
 ) *Controller {
 	tx := &fakeTransport{
 		ch:       make(chan []byte, 1),
 		done:     make(chan struct{}),
-		notifier: NewNotifier(),
+		Notifier: NewNotifier(),
 	}
 	go func() {
 		defer close(tx.done)
@@ -54,7 +50,7 @@ type Controller struct {
 }
 
 func (c *Controller) Notify(code NotificationCode, data []byte) {
-	c.tx.notifier.Notify(code, data)
+	c.tx.Notify(code, data)
 }
 
 func (c *Controller) Recv() []byte {

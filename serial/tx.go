@@ -11,8 +11,8 @@ import (
 )
 
 type tx struct {
-	port           serial.Port
-	notifier       *meshcore.Notifier
+	port serial.Port
+	*meshcore.Notifier
 	isDisconnected atomic.Bool
 }
 
@@ -33,8 +33,4 @@ func (t *tx) Write(p []byte) (int, error) {
 func (t *tx) Disconnect() error {
 	t.isDisconnected.Store(true)
 	return t.port.Close()
-}
-
-func (t *tx) Notifier() *meshcore.Notifier {
-	return t.notifier
 }

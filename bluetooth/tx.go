@@ -9,7 +9,7 @@ import (
 type tx struct {
 	device   bluetooth.Device
 	toDevice bluetooth.DeviceCharacteristic
-	notifier *meshcore.Notifier
+	*meshcore.Notifier
 }
 
 var _ meshcore.Transport = (*tx)(nil)
@@ -20,8 +20,4 @@ func (t *tx) Write(p []byte) (n int, err error) {
 
 func (t *tx) Disconnect() error {
 	return t.device.Disconnect()
-}
-
-func (t *tx) Notifier() *meshcore.Notifier {
-	return t.notifier
 }

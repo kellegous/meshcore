@@ -39,7 +39,7 @@ func Connect(
 
 	transport := &tx{
 		port:     port,
-		notifier: notifier,
+		Notifier: notifier,
 	}
 
 	// TODO(kellegous): This needs to become a part of the
