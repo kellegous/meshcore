@@ -83,52 +83,30 @@ func expect(
 
 // AddOrUpdateContact adds or updates a contact on the device.
 func (c *Conn) AddOrUpdateContact(ctx context.Context, contact *Contact) error {
-	// next, done := iter.Pull2(
-	// 	c.tx.Subscribe2(ctx, NotificationTypeOk, NotificationTypeErr),
-	// )
-	// defer done()
-
-	// if err := writeAddOrUpdateContactCommand(c.tx, contact); err != nil {
-	// 	return poop.Chain(err)
-	// }
-
-	// res, err, ok := next()
-	// if !ok {
-	// 	return poop.Chain(io.ErrUnexpectedEOF)
-	// } else if err != nil {
-	// 	return poop.Chain(err)
-	// }
-
-	// switch t := res.(type) {
-	// case *OkNotification:
-	// 	return nil
-	// case *ErrNotification:
-	// 	return poop.Chain(t.Error())
-	// }
-
-	// panic("unreachable")
-
-	var err error
-
-	subs := expect(c.tx, func(code NotificationCode, data []byte) bool {
-		switch code {
-		case NotificationTypeOk:
-		case NotificationTypeErr:
-			err = readError(data)
-		}
-		return false
-	}, NotificationTypeOk, NotificationTypeErr)
-	defer subs.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeOk, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeAddOrUpdateContactCommand(c.tx, contact); err != nil {
 		return poop.Chain(err)
 	}
 
-	if err := subs.Wait(ctx); err != nil {
+	res, err, ok := next()
+	if !ok {
+		return poop.Chain(io.ErrUnexpectedEOF)
+	} else if err != nil {
 		return poop.Chain(err)
 	}
 
-	return err
+	switch t := res.(type) {
+	case *OkNotification:
+		return nil
+	case *ErrNotification:
+		return poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // RemoveContact removes a contact from the device.
