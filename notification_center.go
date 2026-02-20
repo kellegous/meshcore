@@ -9,10 +9,6 @@ import (
 	"github.com/kellegous/poop"
 )
 
-type Notification interface {
-	NotificationCode() NotificationCode
-}
-
 type notificationData struct {
 	Notification Notification
 	Error        error

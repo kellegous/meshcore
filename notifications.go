@@ -5,6 +5,10 @@ import (
 	"fmt"
 )
 
+type Notification interface {
+	NotificationCode() NotificationCode
+}
+
 type NotificationCode byte
 
 const (
@@ -105,16 +109,24 @@ var errorText = map[ErrorCode]string{
 	ErrorCodeIllegalArgument:    "illegal argument",
 }
 
-type ResponseError struct {
+type CommandError struct {
 	Code ErrorCode
 }
 
-func (e *ResponseError) Error() string {
-	return fmt.Sprintf("response error: %d (%s)", e.Code, errorText[e.Code])
+func (e *CommandError) Error() string {
+	return fmt.Sprintf("error: %d (%s)", e.Code, errorText[e.Code])
+}
+
+type ErrNotification struct {
+	Code ErrorCode
+}
+
+func (e *ErrNotification) Error() error {
+	return &CommandError{Code: e.Code}
 }
 
 func hasErrorCode(err error, code ErrorCode) bool {
-	var resErr *ResponseError
+	var resErr *CommandError
 	if errors.As(err, &resErr) {
 		return resErr.Code == code
 	}

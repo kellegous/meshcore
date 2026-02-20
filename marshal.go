@@ -695,9 +695,9 @@ func writeLatLon(w io.Writer, lat, lon float64) error {
 
 func readError(data []byte) error {
 	if len(data) == 0 {
-		return &ResponseError{Code: ErrorCodeUnknown}
+		return &CommandError{Code: ErrorCodeUnknown}
 	}
-	return &ResponseError{
+	return &CommandError{
 		Code: ErrorCode(data[0]),
 	}
 }

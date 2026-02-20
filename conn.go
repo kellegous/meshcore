@@ -464,7 +464,7 @@ func (c *Conn) DeviceQuery(ctx context.Context, appTargetVer byte) (*DeviceInfo,
 
 // Reboot reboots the device.
 func (c *Conn) Reboot(ctx context.Context) error {
-	var rErr *ResponseError
+	var rErr *CommandError
 	if err := writeRebootCommand(c.tx); err != nil {
 		// Only return an error if we get a response error. In the
 		// common case, this will timeout on writing the command and

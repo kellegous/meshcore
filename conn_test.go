@@ -195,8 +195,8 @@ func TestRemoveContact(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if err := conn.RemoveContact(t.Context(), &key); err == nil || err.Error() != "response error: 5 (file io error)" {
-				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			if err := conn.RemoveContact(t.Context(), &key); err == nil || err.Error() != "error: 5 (file io error)" {
+				t.Fatalf("expected error: error: 5 (file io error), got %v", err)
 			}
 		})
 
@@ -245,8 +245,8 @@ func TestGetDeviceTime(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if _, err := conn.GetDeviceTime(t.Context()); err == nil || err.Error() != "response error: 5 (file io error)" {
-				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			if _, err := conn.GetDeviceTime(t.Context()); err == nil || err.Error() != "error: 5 (file io error)" {
+				t.Fatalf("expected error: error: 5 (file io error), got %v", err)
 			}
 		})
 
@@ -292,8 +292,8 @@ func TestGetBatteryVoltage(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if _, err := conn.GetBatteryVoltage(t.Context()); err == nil || err.Error() != "response error: 5 (file io error)" {
-				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			if _, err := conn.GetBatteryVoltage(t.Context()); err == nil || err.Error() != "error: 5 (file io error)" {
+				t.Fatalf("expected error: error: 5 (file io error), got %v", err)
 			}
 		})
 
@@ -437,8 +437,8 @@ func TestGetChannel(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if _, err := conn.GetChannel(t.Context(), idx); err == nil || err.Error() != "response error: 5 (file io error)" {
-				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			if _, err := conn.GetChannel(t.Context(), idx); err == nil || err.Error() != "error: 5 (file io error)" {
+				t.Fatalf("expected error: error: 5 (file io error), got %v", err)
 			}
 		})
 
@@ -765,8 +765,8 @@ func TestShareContact(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if err := conn.ShareContact(t.Context(), key); err == nil || err.Error() != "response error: 5 (file io error)" {
-				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			if err := conn.ShareContact(t.Context(), key); err == nil || err.Error() != "error: 5 (file io error)" {
+				t.Fatalf("expected error: error: 5 (file io error), got %v", err)
 			}
 		})
 
@@ -958,8 +958,8 @@ func TestSendChannelTextMessage(t *testing.T) {
 				channelIndex,
 				message,
 				textType,
-			); err == nil || err.Error() != "response error: 5 (file io error)" {
-				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			); err == nil || err.Error() != "error: 5 (file io error)" {
+				t.Fatalf("expected error: error: 5 (file io error), got %v", err)
 			}
 		})
 
@@ -1007,8 +1007,8 @@ func TestSetAdvertLatLon(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if err := conn.SetAdvertLatLon(t.Context(), lat, lon); err == nil || err.Error() != "response error: 5 (file io error)" {
-				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			if err := conn.SetAdvertLatLon(t.Context(), lat, lon); err == nil || err.Error() != "error: 5 (file io error)" {
+				t.Fatalf("expected error: error: 5 (file io error), got %v", err)
 			}
 		})
 
@@ -1052,8 +1052,8 @@ func TestSetAdvertName(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if err := conn.SetAdvertName(t.Context(), name); err == nil || err.Error() != "response error: 5 (file io error)" {
-				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			if err := conn.SetAdvertName(t.Context(), name); err == nil || err.Error() != "error: 5 (file io error)" {
+				t.Fatalf("expected error: error: 5 (file io error), got %v", err)
 			}
 		})
 
@@ -1097,8 +1097,8 @@ func TestSetDeviceTime(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if err := conn.SetDeviceTime(t.Context(), time); err == nil || err.Error() != "response error: 5 (file io error)" {
-				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			if err := conn.SetDeviceTime(t.Context(), time); err == nil || err.Error() != "error: 5 (file io error)" {
+				t.Fatalf("expected error: error: 5 (file io error), got %v", err)
 			}
 		})
 
@@ -1141,8 +1141,8 @@ func TestResetPath(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if err := conn.ResetPath(t.Context(), key); err == nil || err.Error() != "response error: 5 (file io error)" {
-				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			if err := conn.ResetPath(t.Context(), key); err == nil || err.Error() != "error: 5 (file io error)" {
+				t.Fatalf("expected error: error: 5 (file io error), got %v", err)
 			}
 		})
 
@@ -1280,8 +1280,8 @@ func TestImportContact(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if err := conn.ImportContact(t.Context(), advertPacket); err == nil || err.Error() != "response error: 5 (file io error)" {
-				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			if err := conn.ImportContact(t.Context(), advertPacket); err == nil || err.Error() != "error: 5 (file io error)" {
+				t.Fatalf("expected error: error: 5 (file io error), got %v", err)
 			}
 		})
 
@@ -1357,8 +1357,8 @@ func TestGetSelfInfo(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if _, err := conn.GetSelfInfo(t.Context()); err == nil || err.Error() != "response error: 5 (file io error)" {
-				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			if _, err := conn.GetSelfInfo(t.Context()); err == nil || err.Error() != "error: 5 (file io error)" {
+				t.Fatalf("expected error: error: 5 (file io error), got %v", err)
 			}
 		})
 
@@ -1408,8 +1408,8 @@ func TestSetRadioParams(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if err := conn.SetRadioParams(t.Context(), radioFreq, radioBw, radioSf, radioCr); err == nil || err.Error() != "response error: 5 (file io error)" {
-				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			if err := conn.SetRadioParams(t.Context(), radioFreq, radioBw, radioSf, radioCr); err == nil || err.Error() != "error: 5 (file io error)" {
+				t.Fatalf("expected error: error: 5 (file io error), got %v", err)
 			}
 		})
 
@@ -1479,8 +1479,8 @@ func TestSendBinaryRequest(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if _, err := conn.SendBinaryRequest(t.Context(), fakePublicKey(42), payload); err == nil || err.Error() != "response error: 5 (file io error)" {
-				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			if _, err := conn.SendBinaryRequest(t.Context(), fakePublicKey(42), payload); err == nil || err.Error() != "error: 5 (file io error)" {
+				t.Fatalf("expected error: error: 5 (file io error), got %v", err)
 			}
 		})
 
@@ -1567,8 +1567,8 @@ func TestSetTXPower(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if err := conn.SetTXPower(t.Context(), power); err == nil || err.Error() != "response error: 5 (file io error)" {
-				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			if err := conn.SetTXPower(t.Context(), power); err == nil || err.Error() != "error: 5 (file io error)" {
+				t.Fatalf("expected error: error: 5 (file io error), got %v", err)
 			}
 		})
 
@@ -1609,8 +1609,8 @@ func TestSetOtherParams(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if err := conn.SetOtherParams(t.Context(), manualAddContacts); err == nil || err.Error() != "response error: 5 (file io error)" {
-				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			if err := conn.SetOtherParams(t.Context(), manualAddContacts); err == nil || err.Error() != "error: 5 (file io error)" {
+				t.Fatalf("expected error: error: 5 (file io error), got %v", err)
 			}
 		})
 
@@ -1757,8 +1757,8 @@ func TestTracePath(t *testing.T) { // TODO: fix this test
 	t.Run("error", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
 			_, err := conn.TracePath(t.Context(), path)
-			if err == nil || err.Error() != "response error: 5 (file io error)" {
-				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			if err == nil || err.Error() != "error: 5 (file io error)" {
+				t.Fatalf("expected error: error: 5 (file io error), got %v", err)
 			}
 		})
 
@@ -1858,8 +1858,8 @@ func TestLogin(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		controller := DoCommand(func(conn *Conn) {
-			if err := conn.Login(t.Context(), key, password); err == nil || err.Error() != "response error: 5 (file io error)" {
-				t.Fatalf("expected error: response error: 5 (file io error), got %v", err)
+			if err := conn.Login(t.Context(), key, password); err == nil || err.Error() != "error: 5 (file io error)" {
+				t.Fatalf("expected error: error: 5 (file io error), got %v", err)
 			}
 		})
 		if err := ValidateBytes(
