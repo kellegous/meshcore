@@ -2,7 +2,9 @@ package serial
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
+	"iter"
 	"sync/atomic"
 
 	"github.com/kellegous/meshcore"
@@ -13,7 +15,8 @@ import (
 type tx struct {
 	port serial.Port
 	*meshcore.Notifier
-	isDisconnected atomic.Bool
+	isDisconnected     atomic.Bool
+	notificationCenter *meshcore.NotificationCenter
 }
 
 var _ meshcore.Transport = (*tx)(nil)
@@ -33,4 +36,8 @@ func (t *tx) Write(p []byte) (int, error) {
 func (t *tx) Disconnect() error {
 	t.isDisconnected.Store(true)
 	return t.port.Close()
+}
+
+func (t *tx) Subscribe2(ctx context.Context, codes ...meshcore.NotificationCode) iter.Seq2[meshcore.Notification, error] {
+	return t.notificationCenter.Subscribe(ctx, codes...)
 }

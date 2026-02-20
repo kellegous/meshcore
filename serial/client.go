@@ -37,9 +37,12 @@ func Connect(
 
 	notifier := meshcore.NewNotifier()
 
+	notificationCenter := meshcore.NewNotificationCenter()
+
 	transport := &tx{
-		port:     port,
-		Notifier: notifier,
+		port:               port,
+		notificationCenter: notificationCenter,
+		Notifier:           notifier,
 	}
 
 	// TODO(kellegous): This needs to become a part of the
@@ -80,7 +83,10 @@ func Connect(
 			if nf := options.onNotification; nf != nil {
 				nf(code, data[1:])
 			}
+
+			// TODO(kellegous): Remove this.
 			notifier.Notify(code, data[1:])
+			notificationCenter.Publish(code, data[1:])
 		}
 	}()
 

@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"iter"
 	"time"
 
 	"github.com/kellegous/poop"
@@ -16,6 +17,8 @@ type Transport interface {
 	io.Writer
 	Disconnect() error
 	Subscribe(code NotificationCode, fn func(data []byte)) func()
+	// TODO(kellegous): Rename this to Subscribe.
+	Subscribe2(ctx context.Context, codes ...NotificationCode) iter.Seq2[Notification, error]
 }
 
 type Conn struct {
