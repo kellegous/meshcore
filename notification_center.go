@@ -5,8 +5,6 @@ import (
 	"iter"
 	"slices"
 	"sync"
-
-	"github.com/kellegous/poop"
 )
 
 type notificationData struct {
@@ -98,12 +96,8 @@ func (e *NotificationCenter) Publish(code NotificationCode, data []byte) {
 		return
 	}
 
-	notification, err := decodeNotification(code, data)
+	notification, err := readNotification(code, data)
 	for _, s := range streams {
 		s.publish(notification, err)
 	}
-}
-
-func decodeNotification(code NotificationCode, data []byte) (Notification, error) {
-	return nil, poop.Newf("not implemented")
 }

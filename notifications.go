@@ -1,8 +1,13 @@
 package meshcore
 
 import (
+	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
+
+	"github.com/kellegous/poop"
 )
 
 type Notification interface {
@@ -117,12 +122,51 @@ func (e *CommandError) Error() string {
 	return fmt.Sprintf("error: %d (%s)", e.Code, errorText[e.Code])
 }
 
+func readNotification(code NotificationCode, data []byte) (Notification, error) {
+	switch code {
+	case NotificationTypeOk:
+		return readOkNotification(data)
+	case NotificationTypeErr:
+		return readErrNotification(data)
+	case NotificationTypeContactsStart:
+		return readContactStartNotification(data)
+	case NotificationTypeContact:
+		return readContactNotification(data)
+	case NotificationTypeEndOfContacts:
+		return readEndOfContactsNotification(data)
+	case NotificationTypeSelfInfo:
+		return readSelfInfoNotification(data)
+	}
+	return nil, poop.New("unknown notification code")
+}
+
+type OkNotification struct{}
+
+func (e *OkNotification) NotificationCode() NotificationCode {
+	return NotificationTypeOk
+}
+
+func readOkNotification(data []byte) (*OkNotification, error) {
+	return &OkNotification{}, nil
+}
+
 type ErrNotification struct {
 	Code ErrorCode
 }
 
+func (e *ErrNotification) NotificationCode() NotificationCode {
+	return NotificationTypeErr
+}
+
 func (e *ErrNotification) Error() error {
 	return &CommandError{Code: e.Code}
+}
+
+func readErrNotification(data []byte) (*ErrNotification, error) {
+	if len(data) == 0 {
+		return &ErrNotification{Code: ErrorCodeUnknown}, nil
+	}
+	return &ErrNotification{Code: ErrorCode(data[0])}, nil
 }
 
 func hasErrorCode(err error, code ErrorCode) bool {
@@ -131,4 +175,108 @@ func hasErrorCode(err error, code ErrorCode) bool {
 		return resErr.Code == code
 	}
 	return false
+}
+
+type ContactStartNotification struct{}
+
+func (e *ContactStartNotification) NotificationCode() NotificationCode {
+	return NotificationTypeContactsStart
+}
+
+func readContactStartNotification(data []byte) (*ContactStartNotification, error) {
+	return &ContactStartNotification{}, nil
+}
+
+type ContactNotification struct {
+	Contact Contact
+}
+
+func (e *ContactNotification) NotificationCode() NotificationCode {
+	return NotificationTypeContact
+}
+
+func readContactNotification(data []byte) (*ContactNotification, error) {
+	var notif ContactNotification
+	if err := notif.Contact.readFrom(bytes.NewReader(data)); err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &notif, nil
+}
+
+type EndOfContactsNotification struct{}
+
+func (e *EndOfContactsNotification) NotificationCode() NotificationCode {
+	return NotificationTypeEndOfContacts
+}
+
+func readEndOfContactsNotification(data []byte) (*EndOfContactsNotification, error) {
+	return &EndOfContactsNotification{}, nil
+}
+
+type SelfInfoNotification struct {
+	Type              byte
+	TxPower           byte
+	MaxTxPower        byte
+	PublicKey         PublicKey
+	AdvLat            float64
+	AdvLon            float64
+	ManualAddContacts byte
+	RadioFreq         float64
+	RadioBw           float64
+	RadioSf           byte
+	RadioCr           byte
+	Name              string
+}
+
+func (e *SelfInfoNotification) NotificationCode() NotificationCode {
+	return NotificationTypeSelfInfo
+}
+
+func readSelfInfoNotification(data []byte) (*SelfInfoNotification, error) {
+	var n SelfInfoNotification
+	r := bytes.NewReader(data)
+	if err := binary.Read(r, binary.LittleEndian, &n.Type); err != nil {
+		return nil, poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &n.TxPower); err != nil {
+		return nil, poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &n.MaxTxPower); err != nil {
+		return nil, poop.Chain(err)
+	}
+	if err := n.PublicKey.readFrom(r); err != nil {
+		return nil, poop.Chain(err)
+	}
+	var err error
+	n.AdvLat, n.AdvLon, err = readLatLon(r)
+	if err != nil {
+		return nil, poop.Chain(err)
+	}
+	var reserved [3]byte
+	if _, err := io.ReadFull(r, reserved[:]); err != nil {
+		return nil, poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &n.ManualAddContacts); err != nil {
+		return nil, poop.Chain(err)
+	}
+	var freq, bw uint32
+	if err := binary.Read(r, binary.LittleEndian, &freq); err != nil {
+		return nil, poop.Chain(err)
+	}
+	n.RadioFreq = float64(freq) / 1000
+	if err := binary.Read(r, binary.LittleEndian, &bw); err != nil {
+		return nil, poop.Chain(err)
+	}
+	n.RadioBw = float64(bw) / 1000
+	if err := binary.Read(r, binary.LittleEndian, &n.RadioSf); err != nil {
+		return nil, poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &n.RadioCr); err != nil {
+		return nil, poop.Chain(err)
+	}
+	n.Name, err = readString(r)
+	if err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &n, nil
 }
