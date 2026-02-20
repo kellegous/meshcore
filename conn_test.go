@@ -178,6 +178,72 @@ func TestGetContacts(t *testing.T) {
 	})
 }
 
+func TestAddOrUpdateContact(t *testing.T) {
+	contact := &Contact{
+		PublicKey:  fakePublicKey(42),
+		Type:       ContactTypeChat,
+		Flags:      0,
+		OutPath:    []byte{1, 2, 3},
+		AdvName:    "test",
+		LastAdvert: time.Unix(100, 0),
+		AdvLat:     37.7,
+		AdvLon:     -122.4,
+		LastMod:    time.Unix(101, 0),
+	}
+
+	contactBytes := func() []byte {
+		var buf bytes.Buffer
+		contact.writeTo(&buf)
+		return buf.Bytes()
+	}()
+
+	t.Run("success", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.AddOrUpdateContact(t.Context(), contact); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(contact, contact) {
+				t.Fatalf("expected %s, got %s",
+					describe(contact),
+					describe(contact),
+				)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandAddUpdateContact),
+			Bytes(contactBytes...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(NotificationTypeOk, nil)
+
+		controller.Wait()
+	})
+
+	t.Run("error", func(t *testing.T) {
+		controller := DoCommand(func(conn *Conn) {
+			if err := conn.AddOrUpdateContact(t.Context(), contact); err == nil || err.Error() != "error: 5 (file io error)" {
+				t.Fatalf("expected error: error: 5 (file io error), got %v", err)
+			}
+		})
+
+		if err := ValidateBytes(
+			controller.Recv(),
+			Command(CommandAddUpdateContact),
+			Bytes(contactBytes...),
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		controller.Notify(NotificationTypeErr, BytesFrom(Byte(byte(ErrorCodeFileIOError))))
+
+		controller.Wait()
+	})
+}
+
 func TestRemoveContact(t *testing.T) {
 	key := fakePublicKey(42)
 
