@@ -389,7 +389,7 @@ func (e *NoMoreMessagesNotification) NotificationCode() NotificationCode {
 	return NotificationTypeNoMoreMessages
 }
 
-func readNoMoreMessagesNotification(data []byte) (*NoMoreMessagesNotification, error) {
+func readNoMoreMessagesNotification(_ []byte) (*NoMoreMessagesNotification, error) {
 	return &NoMoreMessagesNotification{}, nil
 }
 
