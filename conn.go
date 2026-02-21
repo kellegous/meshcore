@@ -882,21 +882,10 @@ func (c *Conn) SetRadioParams(
 	radioSf byte,
 	radioCr byte,
 ) error {
-	var err error
-
-	expect := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeOk:
-			case NotificationTypeErr:
-				err = readError(data)
-			}
-			return false
-		},
-		NotificationTypeOk,
-		NotificationTypeErr)
-	defer expect.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeOk, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeSetRadioParamsCommand(
 		c.tx,
@@ -907,12 +896,19 @@ func (c *Conn) SetRadioParams(
 	); err != nil {
 		return poop.Chain(err)
 	}
-
-	if err := expect.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return poop.Chain(err)
 	}
 
-	return err
+	switch t := res.(type) {
+	case *OkNotification:
+		return nil
+	case *ErrNotification:
+		return poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // SendBinaryRequest sends a binary request to the given recipient.
@@ -920,52 +916,43 @@ func (c *Conn) SendBinaryRequest(
 	ctx context.Context,
 	recipient PublicKey,
 	payload []byte,
-) (*BinaryResponse, error) {
-	var binaryResponse BinaryResponse
-	var err error
-
-	var tag uint32
-
-	expect := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeSent:
-				var sr *SentNotification
-				sr, err = readSentNotification(data)
-				if err == nil {
-					tag = sr.ExpectedAckCRC
-				}
-				return err == nil
-			case NotificationTypeBinaryResponse:
-				err = binaryResponse.readFrom(bytes.NewReader(data))
-				if err != nil {
-					return false
-				}
-				if binaryResponse.Tag != tag {
-					return true
-				}
-				return false
-			case NotificationTypeErr:
-				err = readError(data)
-				return false
-			}
-			return false
-		},
-		NotificationTypeBinaryResponse,
-		NotificationTypeSent,
-		NotificationTypeErr)
-	defer expect.Unsubscribe()
+) (*BinaryResponseNotification, error) {
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeSent, NotificationTypeBinaryResponse, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeSendBinaryRequestCommand(c.tx, recipient, payload); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	return &binaryResponse, err
+	var tag uint32
+	switch t := res.(type) {
+	case *SentNotification:
+		tag = t.ExpectedAckCRC
+	case *ErrNotification:
+		return nil, poop.Chain(t.Error())
+	}
+
+	for {
+		res, err, _ := next()
+		if err != nil {
+			return nil, poop.Chain(err)
+		}
+
+		switch t := res.(type) {
+		case *BinaryResponseNotification:
+			if t.Tag != tag {
+				continue
+			}
+			return t, nil
+		}
+	}
 }
 
 // SetTXPower sets the TX power.

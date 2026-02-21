@@ -1510,7 +1510,7 @@ func TestSendBinaryRequest(t *testing.T) {
 		return byte(i + 1)
 	})
 	tag := uint32(1234567890)
-	expected := &BinaryResponse{
+	expected := &BinaryResponseNotification{
 		Tag:          tag,
 		ResponseData: payload,
 	}
