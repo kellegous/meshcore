@@ -957,60 +957,52 @@ func (c *Conn) SendBinaryRequest(
 
 // SetTXPower sets the TX power.
 func (c *Conn) SetTXPower(ctx context.Context, power byte) error {
-	var err error
-
-	expect := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeOk:
-			case NotificationTypeErr:
-				err = readError(data)
-			}
-			return false
-		},
-		NotificationTypeOk,
-		NotificationTypeErr)
-	defer expect.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeOk, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeSetTXPowerCommand(c.tx, power); err != nil {
 		return poop.Chain(err)
 	}
-
-	if err := expect.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return poop.Chain(err)
 	}
 
-	return err
+	switch t := res.(type) {
+	case *OkNotification:
+		return nil
+	case *ErrNotification:
+		return poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // SetOtherParams sets the other parameters.
 func (c *Conn) SetOtherParams(ctx context.Context, manualAddContacts bool) error {
-	var err error
-
-	expect := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeOk:
-			case NotificationTypeErr:
-				err = readError(data)
-			}
-			return false
-		},
-		NotificationTypeOk,
-		NotificationTypeErr)
-	defer expect.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeOk, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeSetOtherParamsCommand(c.tx, manualAddContacts); err != nil {
 		return poop.Chain(err)
 	}
-
-	if err := expect.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return poop.Chain(err)
 	}
 
-	return err
+	switch t := res.(type) {
+	case *OkNotification:
+		return nil
+	case *ErrNotification:
+		return poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 type NeighborsOrder byte
