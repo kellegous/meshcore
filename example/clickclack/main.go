@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 
 	"github.com/kellegous/meshcore"
 	meshcore_bluetooth "github.com/kellegous/meshcore/bluetooth"
@@ -150,20 +149,25 @@ func discover(
 	advertiser *meshcore.Conn,
 	listener *meshcore.Conn,
 ) error {
-	var wg sync.WaitGroup
-	wg.Add(1)
+	g, bgCtx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		for advert, err := range listener.Notifications(bgCtx, meshcore.NotificationTypeAdvert) {
+			if err != nil {
+				return poop.Chain(err)
+			}
+			fmt.Printf("advert: %v\n", advert)
+			break
+		}
+		return nil
+	})
 
-	// listenerSub := listener.OnAdvert(func(e *meshcore.AdvertEvent) {
-	// 	fmt.Printf("advert: %v\n", e)
-	// 	wg.Done()
-	// })
-	// defer listenerSub()
+	if err := advertiser.SendAdvert(ctx, meshcore.SelfAdvertTypeFlood); err != nil {
+		return poop.Chain(err)
+	}
 
-	// if err := advertiser.SendAdvert(ctx, meshcore.SelfAdvertTypeFlood); err != nil {
-	// 	return poop.Chain(err)
-	// }
-
-	wg.Wait()
+	if err := g.Wait(); err != nil {
+		return poop.Chain(err)
+	}
 
 	return nil
 }
