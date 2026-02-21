@@ -2,10 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
-	"fmt"
-	"os"
-	"os/signal"
 	"strings"
 
 	"github.com/kellegous/meshcore"
@@ -46,28 +42,28 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	flag.Parse()
+	// flag.Parse()
 
-	if flag.NArg() != 1 {
-		return poop.Newf("expected 1 argument, got %d", flag.NArg())
-	}
+	// if flag.NArg() != 1 {
+	// 	return poop.Newf("expected 1 argument, got %d", flag.NArg())
+	// }
 
-	conn, err := connect(ctx, flag.Arg(0))
-	if err != nil {
-		return poop.Chain(err)
-	}
-	defer conn.Disconnect()
+	// conn, err := connect(ctx, flag.Arg(0))
+	// if err != nil {
+	// 	return poop.Chain(err)
+	// }
+	// defer conn.Disconnect()
 
-	ctx, done := signal.NotifyContext(ctx, os.Interrupt, os.Kill)
-	defer done()
+	// ctx, done := signal.NotifyContext(ctx, os.Interrupt, os.Kill)
+	// defer done()
 
-	unsub := conn.OnAdvert(func(advertEvent *meshcore.AdvertEvent) {
-		fmt.Printf("advert: %+v\n", advertEvent)
-	})
-	defer unsub()
+	// unsub := conn.OnAdvert(func(advertEvent *meshcore.AdvertEvent) {
+	// 	fmt.Printf("advert: %+v\n", advertEvent)
+	// })
+	// defer unsub()
 
-	<-ctx.Done()
-	os.Exit(0)
+	// <-ctx.Done()
+	// os.Exit(0)
 
 	return nil
 }

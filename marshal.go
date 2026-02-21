@@ -262,53 +262,6 @@ func (c *ChannelMessage) readFrom(r io.Reader) error {
 	return nil
 }
 
-type SignStartResponse struct {
-	MaxSignDataLen uint32
-}
-
-func (s *SignStartResponse) readFrom(r io.Reader) error {
-	var reserved byte
-	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
-		return poop.Chain(err)
-	}
-	if err := binary.Read(r, binary.LittleEndian, &s.MaxSignDataLen); err != nil {
-		return poop.Chain(err)
-	}
-	return nil
-}
-
-type SignatureResponse struct {
-	Signature [64]byte
-}
-
-func (s *SignatureResponse) readFrom(r io.Reader) error {
-	if _, err := io.ReadFull(r, s.Signature[:]); err != nil {
-		return poop.Chain(err)
-	}
-	return nil
-}
-
-type BinaryResponse struct {
-	Tag          uint32
-	ResponseData []byte
-}
-
-func (b *BinaryResponse) readFrom(r io.Reader) error {
-	var reserved byte
-	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
-		return poop.Chain(err)
-	}
-	if err := binary.Read(r, binary.LittleEndian, &b.Tag); err != nil {
-		return poop.Chain(err)
-	}
-	var err error
-	b.ResponseData, err = io.ReadAll(r)
-	if err != nil {
-		return poop.Chain(err)
-	}
-	return nil
-}
-
 type Neighbour struct {
 	PublicKeyPrefix []byte
 	HeardSecondsAgo uint32
@@ -371,76 +324,6 @@ func (t *TraceData) readFrom(r io.Reader) error {
 		return poop.Chain(err)
 	}
 	t.LastSnr = float64(lastSnr) / 4
-	return nil
-}
-
-type AdvertEvent struct {
-	PublicKey PublicKey
-}
-
-func (a *AdvertEvent) readFrom(r io.Reader) error {
-	if _, err := io.ReadFull(r, a.PublicKey.key[:]); err != nil {
-		return poop.Chain(err)
-	}
-	return nil
-}
-
-type NewAdvertEvent struct {
-	PublicKey  PublicKey
-	Type       ContactType
-	Flags      byte
-	OutPath    []byte
-	AdvName    string
-	LastAdvert time.Time
-	AdvLat     float64
-	AdvLon     float64
-}
-
-func (n *NewAdvertEvent) readFrom(r io.Reader) error {
-	if _, err := io.ReadFull(r, n.PublicKey.key[:]); err != nil {
-		return poop.Chain(err)
-	}
-	if err := binary.Read(r, binary.LittleEndian, &n.Type); err != nil {
-		return poop.Chain(err)
-	}
-	if err := binary.Read(r, binary.LittleEndian, &n.Flags); err != nil {
-		return poop.Chain(err)
-	}
-	var outPathLen int8
-	if err := binary.Read(r, binary.LittleEndian, &outPathLen); err != nil {
-		return poop.Chain(err)
-	}
-	var outPath [64]byte
-	if _, err := io.ReadFull(r, outPath[:]); err != nil {
-		return poop.Chain(err)
-	}
-	if outPathLen > 0 {
-		n.OutPath = outPath[:outPathLen]
-	}
-	var err error
-	n.AdvName, err = readCString(r, 32)
-	if err != nil {
-		return poop.Chain(err)
-	}
-	n.LastAdvert, err = readTime(r)
-	if err != nil {
-		return poop.Chain(err)
-	}
-	n.AdvLat, n.AdvLon, err = readLatLon(r)
-	if err != nil {
-		return poop.Chain(err)
-	}
-	return nil
-}
-
-type PathUpdatedEvent struct {
-	PublicKey PublicKey
-}
-
-func (p *PathUpdatedEvent) readFrom(r io.Reader) error {
-	if _, err := io.ReadFull(r, p.PublicKey.key[:]); err != nil {
-		return poop.Chain(err)
-	}
 	return nil
 }
 
@@ -525,15 +408,6 @@ func writeLatLon(w io.Writer, lat, lon float64) error {
 		return poop.Chain(err)
 	}
 	return nil
-}
-
-func readError(data []byte) error {
-	if len(data) == 0 {
-		return &CommandError{Code: ErrorCodeUnknown}
-	}
-	return &CommandError{
-		Code: ErrorCode(data[0]),
-	}
 }
 
 func writeCommandCode(w io.Writer, code CommandCode) error {

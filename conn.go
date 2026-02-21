@@ -1134,40 +1134,9 @@ func (c *Conn) Login(ctx context.Context, key PublicKey, password string) error 
 	}
 }
 
-// OnAdvert subscribes to advert events.
-func (c *Conn) OnAdvert(fn func(*AdvertEvent)) func() {
-	return c.tx.Subscribe(NotificationTypeAdvert, func(data []byte) {
-		// TODO(kellegous): Errors should be propagated to the
-		// receive error callback in the transport.
-		var advertEvent AdvertEvent
-		if err := advertEvent.readFrom(bytes.NewReader(data)); err != nil {
-			return
-		}
-		fn(&advertEvent)
-	})
-}
-
-func (c *Conn) OnNewAdvert(fn func(*NewAdvertEvent)) func() {
-	return c.tx.Subscribe(NotificationTypeNewAdvert, func(data []byte) {
-		// TODO(kellegous): Errors should be propagated to the
-		// receive error callback in the transport.
-		var newAdvertEvent NewAdvertEvent
-		if err := newAdvertEvent.readFrom(bytes.NewReader(data)); err != nil {
-			return
-		}
-		fn(&newAdvertEvent)
-	})
-}
-
-// OnPathUpdated subscribes to path updated events.
-func (c *Conn) OnPathUpdated(fn func(*PathUpdatedEvent)) func() {
-	return c.tx.Subscribe(NotificationTypePathUpdated, func(data []byte) {
-		// TODO(kellegous): Errors should be propagated to the
-		// receive error callback in the transport.
-		var pathUpdatedEvent PathUpdatedEvent
-		if err := pathUpdatedEvent.readFrom(bytes.NewReader(data)); err != nil {
-			return
-		}
-		fn(&pathUpdatedEvent)
-	})
+func (c *Conn) Notifications(
+	ctx context.Context,
+	codes ...NotificationCode,
+) iter.Seq2[Notification, error] {
+	return c.tx.Subscribe2(ctx, codes...)
 }

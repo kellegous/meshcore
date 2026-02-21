@@ -153,15 +153,15 @@ func discover(
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	listenerSub := listener.OnAdvert(func(e *meshcore.AdvertEvent) {
-		fmt.Printf("advert: %v\n", e)
-		wg.Done()
-	})
-	defer listenerSub()
+	// listenerSub := listener.OnAdvert(func(e *meshcore.AdvertEvent) {
+	// 	fmt.Printf("advert: %v\n", e)
+	// 	wg.Done()
+	// })
+	// defer listenerSub()
 
-	if err := advertiser.SendAdvert(ctx, meshcore.SelfAdvertTypeFlood); err != nil {
-		return poop.Chain(err)
-	}
+	// if err := advertiser.SendAdvert(ctx, meshcore.SelfAdvertTypeFlood); err != nil {
+	// 	return poop.Chain(err)
+	// }
 
 	wg.Wait()
 

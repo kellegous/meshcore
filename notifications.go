@@ -11,10 +11,12 @@ import (
 	"github.com/kellegous/poop"
 )
 
+// TODO(kellegous): Has to be exported?
 type Notification interface {
 	NotificationCode() NotificationCode
 }
 
+// TODO(kellegous): Has to be exported?
 type NotificationCode byte
 
 const (
@@ -175,6 +177,8 @@ func readNotification(code NotificationCode, data []byte) (Notification, error) 
 		return readBinaryResponseNotification(data)
 	case NotificationTypeTraceData:
 		return readTraceDataNotification(data)
+	case NotificationTypeNewAdvert:
+		return readNewAdvertNotification(data)
 	case NotificationTypeTelemetryResponse:
 		return readTelemetryResponseNotification(data)
 	}
@@ -656,6 +660,60 @@ func readTraceDataNotification(data []byte) (*TraceDataNotification, error) {
 	var n TraceDataNotification
 	r := bytes.NewReader(data)
 	if err := n.TraceData.readFrom(r); err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &n, nil
+}
+
+type NewAdvertNotification struct {
+	PublicKey  PublicKey
+	Type       ContactType
+	Flags      byte
+	OutPath    []byte
+	AdvName    string
+	LastAdvert time.Time
+	AdvLat     float64
+	AdvLon     float64
+}
+
+func (e *NewAdvertNotification) NotificationCode() NotificationCode {
+	return NotificationTypeNewAdvert
+}
+
+func readNewAdvertNotification(data []byte) (*NewAdvertNotification, error) {
+	var n NewAdvertNotification
+	r := bytes.NewReader(data)
+	if err := n.PublicKey.readFrom(r); err != nil {
+		return nil, poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &n.Type); err != nil {
+		return nil, poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &n.Flags); err != nil {
+		return nil, poop.Chain(err)
+	}
+	var outPathLen int8
+	if err := binary.Read(r, binary.LittleEndian, &outPathLen); err != nil {
+		return nil, poop.Chain(err)
+	}
+	var outPath [64]byte
+	if _, err := io.ReadFull(r, outPath[:]); err != nil {
+		return nil, poop.Chain(err)
+	}
+	if outPathLen > 0 {
+		n.OutPath = outPath[:outPathLen]
+	}
+	var err error
+	n.AdvName, err = readCString(r, 32)
+	if err != nil {
+		return nil, poop.Chain(err)
+	}
+	n.LastAdvert, err = readTime(r)
+	if err != nil {
+		return nil, poop.Chain(err)
+	}
+	n.AdvLat, n.AdvLon, err = readLatLon(r)
+	if err != nil {
 		return nil, poop.Chain(err)
 	}
 	return &n, nil
