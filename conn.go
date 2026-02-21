@@ -791,87 +791,85 @@ func (c *Conn) GetSelfInfo(ctx context.Context) (*SelfInfoNotification, error) {
 
 // Sign signs the given data.
 func (c *Conn) Sign(ctx context.Context, data []byte) ([]byte, error) {
+	// In the normal case, this looks like:
+	// -> SignStartCommand
+	// <- SignStartNotification
+	// -> SignDataCommand
+	// <- Ok
+	// -> SignDataCommand
+	// -> Ok
+	// -> SignFinishCommand
+	// <- SignatureNotification
 	const chunkSize = 128
 	buf := bytes.NewReader(data)
 
-	var err error
-	var signature []byte
-
-	sendNextChunk := func() error {
-		var chunk [128]byte
-		n, err := io.ReadFull(buf, chunk[:])
-		if err != nil && err != io.ErrUnexpectedEOF {
-			return poop.Chain(err)
-		}
-
-		if err := writeSignDataCommand(c.tx, chunk[:n]); err != nil {
-			return poop.Chain(err)
-		}
-
-		return nil
-	}
-
-	onSignStart := func(data []byte) error {
-		var signStartResponse SignStartResponse
-		if err := signStartResponse.readFrom(bytes.NewReader(data)); err != nil {
-			return poop.Chain(err)
-		}
-		if buf.Len() > int(signStartResponse.MaxSignDataLen) {
-			return poop.New("data is too long")
-		}
-		if err := sendNextChunk(); err != nil {
-			return poop.Chain(err)
-		}
-		return nil
-	}
-	onOk := func() error {
-		if buf.Len() > 0 {
-			return poop.Chain(sendNextChunk())
-		}
-		if err := writeCommandCode(c.tx, CommandSignFinish); err != nil {
-			return poop.Chain(err)
-		}
-		return nil
-	}
-
-	subs := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeSignStart:
-				err = onSignStart(data)
-				return err == nil
-			case NotificationTypeOk:
-				err = onOk()
-				return err == nil
-			case NotificationTypeSignature:
-				var res SignatureResponse
-				err = res.readFrom(bytes.NewReader(data))
-				if err == nil {
-					signature = res.Signature[:]
-				}
-				return false
-			case NotificationTypeErr:
-				err = readError(data)
-				return false
-			}
-			panic("unreachable")
-		},
-		NotificationTypeSignStart,
-		NotificationTypeOk,
-		NotificationTypeSignature,
-		NotificationTypeErr)
-	defer subs.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx,
+			NotificationTypeSignature,
+			NotificationTypeSignStart,
+			NotificationTypeOk,
+			NotificationTypeErr,
+		),
+	)
+	defer done()
 
 	if err := writeCommandCode(c.tx, CommandSignStart); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	if err := subs.Wait(ctx); err != nil {
+	sendNextChunk := func() error {
+		var chunk [chunkSize]byte
+		n, err := io.ReadFull(buf, chunk[:])
+		if err != nil && err != io.ErrUnexpectedEOF {
+			return poop.Chain(err)
+		}
+		return writeSignDataCommand(c.tx, chunk[:n])
+	}
+
+	res, err, _ := next()
+	if err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	return signature, err
+	switch t := res.(type) {
+	case *SignStartNotification:
+		if buf.Len() > int(t.MaxSignDataLen) {
+			return nil, poop.New("data is too long")
+		}
+		if err := sendNextChunk(); err != nil {
+			return nil, poop.Chain(err)
+		}
+	case *ErrNotification:
+		return nil, poop.Chain(t.Error())
+	default:
+		return nil, poop.Newf("unexpected notification: %s", t.NotificationCode())
+	}
+
+	for {
+		res, err, _ := next()
+		if err != nil {
+			return nil, poop.Chain(err)
+		}
+
+		switch t := res.(type) {
+		case *SignatureNotification:
+			return t.Signature[:], nil
+		case *ErrNotification:
+			return nil, poop.Chain(t.Error())
+		case *OkNotification:
+			if buf.Len() > 0 {
+				if err := sendNextChunk(); err != nil {
+					return nil, poop.Chain(err)
+				}
+			} else {
+				if err := writeCommandCode(c.tx, CommandSignFinish); err != nil {
+					return nil, poop.Chain(err)
+				}
+			}
+		default:
+			return nil, poop.Newf("unexpected notification: %s", t.NotificationCode())
+		}
+	}
 }
 
 // SetRadioParams sets the radio parameters.
@@ -1110,40 +1108,30 @@ func (c *Conn) TracePath(ctx context.Context, path []byte) (*TraceData, error) {
 }
 
 func (c *Conn) Login(ctx context.Context, key PublicKey, password string) error {
-	var loginSuccess LoginSuccessResponse
-	var err error
-
-	expect := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeLoginSuccess:
-				err = loginSuccess.readFrom(bytes.NewReader(data))
-				if err != nil {
-					return false
-				}
-				if !bytes.Equal(loginSuccess.PubKeyPrefix[:], key.Prefix(6)) {
-					// not the right data, continue waiting
-					return true
-				}
-			case NotificationTypeErr:
-				err = readError(data)
-			}
-			return false
-		},
-		NotificationTypeLoginSuccess,
-		NotificationTypeErr)
-	defer expect.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeLoginSuccess, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeLoginCommand(c.tx, key, password); err != nil {
 		return poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
-		return poop.Chain(err)
-	}
+	for {
+		res, err, _ := next()
+		if err != nil {
+			return poop.Chain(err)
+		}
 
-	return err
+		switch t := res.(type) {
+		case *LoginSuccessNotification:
+			if bytes.Equal(t.PubKeyPrefix[:], key.Prefix(6)) {
+				return nil
+			}
+		case *ErrNotification:
+			return poop.Chain(t.Error())
+		}
+	}
 }
 
 // OnAdvert subscribes to advert events.

@@ -167,6 +167,8 @@ func readNotification(code NotificationCode, data []byte) (Notification, error) 
 		return readAdvertNotification(data)
 	case NotificationTypePathUpdated:
 		return readPathUpdatedNotification(data)
+	case NotificationTypeLoginSuccess:
+		return readLoginSuccessNotification(data)
 	case NotificationTypeStatusResponse:
 		return readStatusResponseNotification(data)
 	case NotificationTypeBinaryResponse:
@@ -561,6 +563,27 @@ func (e *PathUpdatedNotification) NotificationCode() NotificationCode {
 func readPathUpdatedNotification(data []byte) (*PathUpdatedNotification, error) {
 	var n PathUpdatedNotification
 	if err := n.PublicKey.readFrom(bytes.NewReader(data)); err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &n, nil
+}
+
+type LoginSuccessNotification struct {
+	PubKeyPrefix [6]byte
+}
+
+func (e *LoginSuccessNotification) NotificationCode() NotificationCode {
+	return NotificationTypeLoginSuccess
+}
+
+func readLoginSuccessNotification(data []byte) (*LoginSuccessNotification, error) {
+	var n LoginSuccessNotification
+	r := bytes.NewReader(data)
+	var reserved byte
+	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
+		return nil, poop.Chain(err)
+	}
+	if _, err := io.ReadFull(r, n.PubKeyPrefix[:]); err != nil {
 		return nil, poop.Chain(err)
 	}
 	return &n, nil

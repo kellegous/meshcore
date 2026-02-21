@@ -374,21 +374,6 @@ func (t *TraceData) readFrom(r io.Reader) error {
 	return nil
 }
 
-type LoginSuccessResponse struct {
-	PubKeyPrefix [6]byte
-}
-
-func (l *LoginSuccessResponse) readFrom(r io.Reader) error {
-	var reserved byte
-	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
-		return poop.Chain(err)
-	}
-	if _, err := io.ReadFull(r, l.PubKeyPrefix[:]); err != nil {
-		return poop.Chain(err)
-	}
-	return nil
-}
-
 type AdvertEvent struct {
 	PublicKey PublicKey
 }
