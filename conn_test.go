@@ -2,7 +2,6 @@ package meshcore
 
 import (
 	"bytes"
-	"context"
 	"encoding/binary"
 	"encoding/json"
 	"iter"
@@ -16,8 +15,7 @@ import (
 type fakeTransport struct {
 	ch   chan []byte
 	done chan struct{}
-	*Notifier
-	notificationCenter *NotificationCenter
+	*NotificationCenter
 }
 
 var _ Transport = (*fakeTransport)(nil)
@@ -31,18 +29,13 @@ func (t *fakeTransport) Disconnect() error {
 	return nil
 }
 
-func (t *fakeTransport) Subscribe2(ctx context.Context, codes ...NotificationCode) iter.Seq2[Notification, error] {
-	return t.notificationCenter.Subscribe(ctx, codes...)
-}
-
 func DoCommand(
 	op func(conn *Conn),
 ) *Controller {
 	tx := &fakeTransport{
 		ch:                 make(chan []byte, 1),
 		done:               make(chan struct{}),
-		Notifier:           NewNotifier(),
-		notificationCenter: NewNotificationCenter(),
+		NotificationCenter: NewNotificationCenter(),
 	}
 	go func() {
 		defer close(tx.done)
@@ -58,8 +51,7 @@ type Controller struct {
 }
 
 func (c *Controller) Notify(code NotificationCode, data []byte) {
-	c.tx.Notify(code, data)
-	c.tx.notificationCenter.Publish(code, data)
+	c.tx.NotificationCenter.Publish(code, data)
 }
 
 func (c *Controller) Recv() []byte {

@@ -110,7 +110,6 @@ func (c *Client) Connect(
 
 	toDevice, frDevice := characteristics[0], characteristics[1]
 
-	notifier := meshcore.NewNotifier()
 	notificationCenter := meshcore.NewNotificationCenter()
 
 	frDevice.EnableNotifications(func(data []byte) {
@@ -118,14 +117,12 @@ func (c *Client) Connect(
 		if nf := options.onNotification; nf != nil {
 			nf(code, data[1:])
 		}
-		notifier.Notify(code, data[1:])
 		notificationCenter.Publish(code, data[1:])
 	})
 
 	return meshcore.NewConnection(&tx{
 		device:             device,
 		toDevice:           toDevice,
-		Notifier:           notifier,
-		notificationCenter: notificationCenter,
+		NotificationCenter: notificationCenter,
 	}), nil
 }
