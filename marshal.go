@@ -128,31 +128,6 @@ const (
 	ContactTypeRoom     ContactType = 3
 )
 
-type TelemetryResponse struct {
-	// Reserved byte
-	pubKeyPrefix  [6]byte
-	LPPSensorData []byte
-}
-
-func (t *TelemetryResponse) readFrom(r io.Reader) error {
-	var reserved byte
-	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
-		return poop.Chain(err)
-	}
-
-	if _, err := io.ReadFull(r, t.pubKeyPrefix[:]); err != nil {
-		return poop.Chain(err)
-	}
-
-	var err error
-	t.LPPSensorData, err = io.ReadAll(r)
-	if err != nil {
-		return poop.Chain(err)
-	}
-
-	return nil
-}
-
 type ChannelInfo struct {
 	Index  uint8
 	Name   string

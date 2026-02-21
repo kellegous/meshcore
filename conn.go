@@ -299,34 +299,29 @@ func (c *Conn) SendChannelTextMessage(
 func (c *Conn) GetTelemetry(
 	ctx context.Context,
 	key *PublicKey,
-) (*TelemetryResponse, error) {
-	var telemetry TelemetryResponse
-	var err error
-
-	subs := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeTelemetryResponse:
-				err = telemetry.readFrom(bytes.NewReader(data))
-			case NotificationTypeErr:
-				err = readError(data)
-			}
-			return false
-		},
-		NotificationTypeTelemetryResponse,
-		NotificationTypeErr)
-	defer subs.Unsubscribe()
+) (*TelemetryResponseNotification, error) {
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeTelemetryResponse, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeGetTelemetryCommand(c.tx, key); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	if err := subs.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	return &telemetry, err
+	switch t := res.(type) {
+	case *TelemetryResponseNotification:
+		return t, nil
+	case *ErrNotification:
+		return nil, poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // GetChannel returns the channel information for the given index.
@@ -334,33 +329,28 @@ func (c *Conn) GetChannel(
 	ctx context.Context,
 	idx uint8,
 ) (*ChannelInfo, error) {
-	var channel ChannelInfo
-	var err error
-
-	subs := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeChannelInfo:
-				err = channel.readFrom(bytes.NewReader(data))
-			case NotificationTypeErr:
-				err = readError(data)
-			}
-			return false
-		},
-		NotificationTypeChannelInfo,
-		NotificationTypeErr)
-	defer subs.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeChannelInfo, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeGetChannelCommand(c.tx, idx); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	if err := subs.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	return &channel, err
+	switch t := res.(type) {
+	case *ChannelInfoNotification:
+		return &t.ChannelInfo, nil
+	case *ErrNotification:
+		return nil, poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // GetChannels returns the list of all channels.

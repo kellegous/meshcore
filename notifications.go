@@ -167,6 +167,10 @@ func readNotification(code NotificationCode, data []byte) (Notification, error) 
 		return readAdvertNotification(data)
 	case NotificationTypePathUpdated:
 		return readPathUpdatedNotification(data)
+	case NotificationTypeBinaryResponse:
+		return readBinaryResponseNotification(data)
+	case NotificationTypeTelemetryResponse:
+		return readTelemetryResponseNotification(data)
 	}
 	return nil, poop.New("unknown notification code")
 }
@@ -553,6 +557,61 @@ func (e *PathUpdatedNotification) NotificationCode() NotificationCode {
 func readPathUpdatedNotification(data []byte) (*PathUpdatedNotification, error) {
 	var n PathUpdatedNotification
 	if err := n.PublicKey.readFrom(bytes.NewReader(data)); err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &n, nil
+}
+
+type BinaryResponseNotification struct {
+	Tag          uint32
+	ResponseData []byte
+}
+
+func (e *BinaryResponseNotification) NotificationCode() NotificationCode {
+	return NotificationTypeBinaryResponse
+}
+
+func readBinaryResponseNotification(data []byte) (*BinaryResponseNotification, error) {
+	var n BinaryResponseNotification
+	r := bytes.NewReader(data)
+	var reserved byte
+	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
+		return nil, poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &n.Tag); err != nil {
+		return nil, poop.Chain(err)
+	}
+	var err error
+	n.ResponseData, err = io.ReadAll(r)
+	if err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &n, nil
+}
+
+type TelemetryResponseNotification struct {
+	PubKeyPrefix  [6]byte
+	LPPSensorData []byte
+}
+
+func (e *TelemetryResponseNotification) NotificationCode() NotificationCode {
+	return NotificationTypeTelemetryResponse
+}
+
+func readTelemetryResponseNotification(data []byte) (*TelemetryResponseNotification, error) {
+	var n TelemetryResponseNotification
+	r := bytes.NewReader(data)
+
+	var reserved byte
+	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
+		return nil, poop.Chain(err)
+	}
+	if _, err := io.ReadFull(r, n.PubKeyPrefix[:]); err != nil {
+		return nil, poop.Chain(err)
+	}
+	var err error
+	n.LPPSensorData, err = io.ReadAll(r)
+	if err != nil {
 		return nil, poop.Chain(err)
 	}
 	return &n, nil

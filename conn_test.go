@@ -433,8 +433,8 @@ func TestSendTextMessage(t *testing.T) {
 
 func TestGetTelemetry(t *testing.T) {
 	key := fakePublicKey(42)
-	expected := &TelemetryResponse{
-		pubKeyPrefix:  [6]byte{42, 0, 0, 0, 0, 0},
+	expected := &TelemetryResponseNotification{
+		PubKeyPrefix:  [6]byte{42, 0, 0, 0, 0, 0},
 		LPPSensorData: []byte{1, 2, 3},
 	}
 
