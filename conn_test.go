@@ -1376,7 +1376,7 @@ func TestImportContact(t *testing.T) {
 }
 
 func TestGetSelfInfo(t *testing.T) {
-	expected := &SelfInfoResponse{
+	expected := &SelfInfoNotification{
 		Type:              1,
 		TxPower:           2,
 		MaxTxPower:        3,

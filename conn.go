@@ -665,149 +665,128 @@ func (c *Conn) GetStatus(ctx context.Context, key PublicKey) (*StatusResponseNot
 
 // SetAdvertLatLon sets the advert latitude and longitude.
 func (c *Conn) SetAdvertLatLon(ctx context.Context, lat float64, lon float64) error {
-	var err error
-
-	expect := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeOk:
-			case NotificationTypeErr:
-				err = readError(data)
-			}
-			return false
-		},
-		NotificationTypeOk,
-		NotificationTypeErr)
-	defer expect.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeOk, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeSetAdvertLatLonCommand(c.tx, lat, lon); err != nil {
 		return poop.Chain(err)
 	}
-
-	if err := expect.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return poop.Chain(err)
 	}
 
-	return err
+	switch t := res.(type) {
+	case *OkNotification:
+		return nil
+	case *ErrNotification:
+		return poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // SetAdvertName sets the advert name.
 func (c *Conn) SetAdvertName(ctx context.Context, name string) error {
-	var err error
-
-	expect := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeOk:
-			case NotificationTypeErr:
-				err = readError(data)
-			}
-			return false
-		},
-		NotificationTypeOk,
-		NotificationTypeErr)
-	defer expect.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeOk, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeSetAdvertNameCommand(c.tx, name); err != nil {
 		return poop.Chain(err)
 	}
+	res, err, _ := next()
 
-	if err := expect.Wait(ctx); err != nil {
+	if err != nil {
 		return poop.Chain(err)
 	}
 
-	return err
+	switch t := res.(type) {
+	case *OkNotification:
+		return nil
+	case *ErrNotification:
+		return poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // SetDeviceTime sets the device time.
 func (c *Conn) SetDeviceTime(ctx context.Context, time time.Time) error {
-	var err error
-
-	expect := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeOk:
-			case NotificationTypeErr:
-				err = readError(data)
-			}
-			return false
-		},
-		NotificationTypeOk,
-		NotificationTypeErr)
-	defer expect.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeOk, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeSetDeviceTimeCommand(c.tx, time); err != nil {
 		return poop.Chain(err)
 	}
-
-	if err := expect.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return poop.Chain(err)
 	}
 
-	return err
+	switch t := res.(type) {
+	case *OkNotification:
+		return nil
+	case *ErrNotification:
+		return poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // ResetPath resets the path for the given contact key.
 func (c *Conn) ResetPath(ctx context.Context, key PublicKey) error {
-	var err error
-
-	expect := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeOk:
-			case NotificationTypeErr:
-				err = readError(data)
-			}
-			return false
-		},
-		NotificationTypeOk,
-		NotificationTypeErr)
-	defer expect.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeOk, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeResetPathCommand(c.tx, &key); err != nil {
 		return poop.Chain(err)
 	}
-
-	if err := expect.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return poop.Chain(err)
 	}
 
-	return err
+	switch t := res.(type) {
+	case *OkNotification:
+		return nil
+	case *ErrNotification:
+		return poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // GetSelfInfo returns the self information from the device.
-func (c *Conn) GetSelfInfo(ctx context.Context) (*SelfInfoResponse, error) {
-	var selfInfo SelfInfoResponse
-	var err error
-
-	ch := make(chan struct{})
-
-	unsubSelfInfo := c.tx.Subscribe(NotificationTypeSelfInfo, func(data []byte) {
-		err = selfInfo.readFrom(bytes.NewReader(data))
-		close(ch)
-	})
-	defer unsubSelfInfo()
-
-	unsubErr := c.tx.Subscribe(NotificationTypeErr, func(data []byte) {
-		err = readError(data)
-		close(ch)
-	})
-	defer unsubErr()
+func (c *Conn) GetSelfInfo(ctx context.Context) (*SelfInfoNotification, error) {
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeSelfInfo, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeCommandAppStartCommand(c.tx); err != nil {
 		return nil, poop.Chain(err)
 	}
-
-	select {
-	case <-ch:
-		return &selfInfo, err
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	res, err, _ := next()
+	if err != nil {
+		return nil, poop.Chain(err)
 	}
+
+	switch t := res.(type) {
+	case *SelfInfoNotification:
+		return t, nil
+	case *ErrNotification:
+		return nil, poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // Sign signs the given data.

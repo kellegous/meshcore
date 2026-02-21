@@ -288,68 +288,6 @@ func (s *SignatureResponse) readFrom(r io.Reader) error {
 	return nil
 }
 
-type SelfInfoResponse struct {
-	Type              byte
-	TxPower           byte
-	MaxTxPower        byte
-	PublicKey         PublicKey
-	AdvLat            float64
-	AdvLon            float64
-	ManualAddContacts byte
-	RadioFreq         float64
-	RadioBw           float64
-	RadioSf           byte
-	RadioCr           byte
-	Name              string
-}
-
-func (s *SelfInfoResponse) readFrom(r io.Reader) error {
-	if err := binary.Read(r, binary.LittleEndian, &s.Type); err != nil {
-		return poop.Chain(err)
-	}
-	if err := binary.Read(r, binary.LittleEndian, &s.TxPower); err != nil {
-		return poop.Chain(err)
-	}
-	if err := binary.Read(r, binary.LittleEndian, &s.MaxTxPower); err != nil {
-		return poop.Chain(err)
-	}
-	if err := s.PublicKey.readFrom(r); err != nil {
-		return poop.Chain(err)
-	}
-	var err error
-	s.AdvLat, s.AdvLon, err = readLatLon(r)
-	if err != nil {
-		return poop.Chain(err)
-	}
-	var reserved [3]byte
-	if _, err := io.ReadFull(r, reserved[:]); err != nil {
-		return poop.Chain(err)
-	}
-	if err := binary.Read(r, binary.LittleEndian, &s.ManualAddContacts); err != nil {
-		return poop.Chain(err)
-	}
-	var freq, bw uint32
-	if err := binary.Read(r, binary.LittleEndian, &freq); err != nil {
-		return poop.Chain(err)
-	}
-	s.RadioFreq = float64(freq) / 1000
-	if err := binary.Read(r, binary.LittleEndian, &bw); err != nil {
-		return poop.Chain(err)
-	}
-	s.RadioBw = float64(bw) / 1000
-	if err := binary.Read(r, binary.LittleEndian, &s.RadioSf); err != nil {
-		return poop.Chain(err)
-	}
-	if err := binary.Read(r, binary.LittleEndian, &s.RadioCr); err != nil {
-		return poop.Chain(err)
-	}
-	s.Name, err = readString(r)
-	if err != nil {
-		return poop.Chain(err)
-	}
-	return nil
-}
-
 type BinaryResponse struct {
 	Tag          uint32
 	ResponseData []byte
