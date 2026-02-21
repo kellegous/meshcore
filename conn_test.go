@@ -959,7 +959,7 @@ func TestImportPrivateKey(t *testing.T) {
 
 func TestGetStatus(t *testing.T) {
 	key := fakePublicKey(42)
-	expected := &StatusResponse{
+	expected := &StatusResponseNotification{
 		PubKeyPrefix: [6]byte{42, 0, 0, 0, 0, 0},
 		StatusData:   []byte{1, 2, 3},
 	}

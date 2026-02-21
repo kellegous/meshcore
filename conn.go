@@ -374,31 +374,28 @@ func (c *Conn) GetChannels(
 
 // SetChannel sets or updates a channel on the device.
 func (c *Conn) SetChannel(ctx context.Context, channel *ChannelInfo) error {
-	var err error
-
-	subs := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeOk:
-			case NotificationTypeErr:
-				err = readError(data)
-			}
-			return false
-		},
-		NotificationTypeOk,
-		NotificationTypeErr)
-	defer subs.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeOk, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeSetChannelCommand(c.tx, channel); err != nil {
 		return poop.Chain(err)
 	}
 
-	if err := subs.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return poop.Chain(err)
 	}
 
-	return err
+	switch t := res.(type) {
+	case *OkNotification:
+		return nil
+	case *ErrNotification:
+		return poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // DeleteChannel deletes a channel from the device.
@@ -413,33 +410,28 @@ func (c *Conn) DeleteChannel(ctx context.Context, idx uint8) error {
 
 // DeviceQuery queries the device information.
 func (c *Conn) DeviceQuery(ctx context.Context, appTargetVer byte) (*DeviceInfo, error) {
-	var deviceInfo DeviceInfo
-	var err error
-
-	subs := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeDeviceInfo:
-				err = deviceInfo.readFrom(bytes.NewReader(data))
-			case NotificationTypeErr:
-				err = readError(data)
-			}
-			return false
-		},
-		NotificationTypeDeviceInfo,
-		NotificationTypeErr)
-	defer subs.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeDeviceInfo, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeDeviceQueryCommand(c.tx, appTargetVer); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	if err := subs.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	return &deviceInfo, err
+	switch t := res.(type) {
+	case *DeviceInfoNotification:
+		return &t.DeviceInfo, nil
+	case *ErrNotification:
+		return nil, poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // Reboot reboots the device.
@@ -459,258 +451,216 @@ func (c *Conn) Reboot(ctx context.Context) error {
 
 // SyncNextMessage synchronizes the next message from the device.
 func (c *Conn) SyncNextMessage(ctx context.Context) (Message, error) {
-	var message Message
-	var err error
-
-	subs := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeContactMsgRecv:
-				var contactMessage ContactMessage
-				err = contactMessage.readFrom(bytes.NewReader(data))
-				if err == nil {
-					message = &contactMessage
-				}
-			case NotificationTypeChannelMsgRecv:
-				var channelMessage ChannelMessage
-				err = channelMessage.readFrom(bytes.NewReader(data))
-				if err == nil {
-					message = &channelMessage
-				}
-			case NotificationTypeErr:
-				err = readError(data)
-			case NotificationTypeNoMoreMessages:
-			}
-			return false
-		},
-		NotificationTypeContactMsgRecv,
-		NotificationTypeChannelMsgRecv,
-		NotificationTypeErr,
-		NotificationTypeNoMoreMessages)
-	defer subs.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeContactMsgRecv, NotificationTypeChannelMsgRecv, NotificationTypeErr, NotificationTypeNoMoreMessages),
+	)
+	defer done()
 
 	if err := writeCommandCode(c.tx, CommandSyncNextMessage); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	if err := subs.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	return message, err
+	switch t := res.(type) {
+	case *ContactMsgRecvNotification:
+		return &t.ContactMessage, nil
+	case *ChannelMsgRecvNotification:
+		return &t.ChannelMessage, nil
+	case *ErrNotification:
+		return nil, poop.Chain(t.Error())
+	case *NoMoreMessagesNotification:
+		return nil, nil
+	}
+
+	panic("unreachable")
 }
 
 // SendAdvert sends an advert to the device.
 func (c *Conn) SendAdvert(ctx context.Context, advertType SelfAdvertType) error {
-	var err error
-
-	subs := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeOk:
-			case NotificationTypeErr:
-				err = readError(data)
-			}
-			return false
-		},
-		NotificationTypeOk,
-		NotificationTypeErr)
-	defer subs.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeOk, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeSendAdvertCommand(c.tx, advertType); err != nil {
 		return poop.Chain(err)
 	}
-
-	if err := subs.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return poop.Chain(err)
 	}
 
-	return err
+	switch t := res.(type) {
+	case *OkNotification:
+		return nil
+	case *ErrNotification:
+		return poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // ExportContact exports a contact from the device. if key is nil, the
 // device's self contact is exported.
 func (c *Conn) ExportContact(ctx context.Context, key *PublicKey) ([]byte, error) {
-	var advertPacket []byte
-	var err error
-
-	subs := expect(c.tx, func(code NotificationCode, data []byte) bool {
-		switch code {
-		case NotificationTypeExportContact:
-			advertPacket = make([]byte, len(data))
-			copy(advertPacket, data)
-		case NotificationTypeErr:
-			err = readError(data)
-		}
-		return false
-	}, NotificationTypeExportContact, NotificationTypeErr)
-	defer subs.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeExportContact, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeExportContactCommand(c.tx, key); err != nil {
 		return nil, poop.Chain(err)
 	}
-
-	if err := subs.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	return advertPacket, err
+	switch t := res.(type) {
+	case *ExportContactNotification:
+		return t.AdvertPacket, nil
+	case *ErrNotification:
+		return nil, poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // ImportContact imports a contact into the device.
 func (c *Conn) ImportContact(ctx context.Context, advertPacket []byte) error {
-	var err error
-
-	subs := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeOk:
-			case NotificationTypeErr:
-				err = readError(data)
-			}
-			return false
-		},
-		NotificationTypeOk,
-		NotificationTypeErr)
-	defer subs.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeOk, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeImportContactCommand(c.tx, advertPacket); err != nil {
 		return poop.Chain(err)
 	}
-
-	if err := subs.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return poop.Chain(err)
 	}
 
-	return err
+	switch t := res.(type) {
+	case *OkNotification:
+		return nil
+	case *ErrNotification:
+		return poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // ShareContact shares a contact with the device.
 func (c *Conn) ShareContact(ctx context.Context, key PublicKey) error {
-	var err error
-
-	subs := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeOk:
-			case NotificationTypeErr:
-				err = readError(data)
-			}
-			return false
-		}, NotificationTypeOk, NotificationTypeErr)
-	defer subs.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeOk, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeShareContactCommand(c.tx, &key); err != nil {
 		return poop.Chain(err)
 	}
-
-	if err := subs.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return poop.Chain(err)
 	}
 
-	return err
+	switch t := res.(type) {
+	case *OkNotification:
+		return nil
+	case *ErrNotification:
+		return poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // ExportPrivateKey exports the private key from the device.
 func (c *Conn) ExportPrivateKey(ctx context.Context) ([]byte, error) {
-	var privateKey [64]byte
-	var err error
-
-	subs := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypePrivateKey:
-				_, err = io.ReadFull(bytes.NewReader(data), privateKey[:])
-			case NotificationTypeDisabled:
-				err = poop.New("private key is disabled")
-			case NotificationTypeErr:
-				err = readError(data)
-			}
-			return false
-		},
-		NotificationTypePrivateKey,
-		NotificationTypeDisabled,
-		NotificationTypeErr)
-	defer subs.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypePrivateKey, NotificationTypeDisabled, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeCommandCode(c.tx, CommandExportPrivateKey); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	if err := subs.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	return privateKey[:], err
+	switch t := res.(type) {
+	case *PrivateKeyNotification:
+		return t.PrivateKey[:], nil
+	case *DisabledNotification:
+		return nil, poop.New("private key is disabled")
+	case *ErrNotification:
+		return nil, poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // ImportPrivateKey imports a private key into the device.
 func (c *Conn) ImportPrivateKey(ctx context.Context, privateKey []byte) error {
-	var err error
-
-	subs := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeOk:
-			case NotificationTypeDisabled:
-				err = poop.New("private key is disabled")
-			case NotificationTypeErr:
-				err = readError(data)
-			}
-			return false
-		}, NotificationTypeOk, NotificationTypeDisabled, NotificationTypeErr)
-	defer subs.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeOk, NotificationTypeDisabled, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeImportPrivateKeyCommand(c.tx, privateKey); err != nil {
 		return poop.Chain(err)
 	}
 
-	if err := subs.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return poop.Chain(err)
 	}
 
-	return err
+	switch t := res.(type) {
+	case *OkNotification:
+		return nil
+	case *DisabledNotification:
+		return poop.New("private key is disabled")
+	case *ErrNotification:
+		return poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // TODO(kellegous): This is not working on real devices currently. We seed the
 // SentResponse arrive, but we never get a PushStatusResponse.
-func (c *Conn) GetStatus(ctx context.Context, key PublicKey) (*StatusResponse, error) {
-	var status StatusResponse
-	var err error
-
-	expect := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			// TODO(kellegous): Why is this a push event?
-			// TODO(kellegous): We should reject responses where the key prefix
-			// doesn't match the given key.
-			case NotificationTypeStatusResponse:
-				err = status.readFrom(bytes.NewReader(data))
-			case NotificationTypeErr:
-				err = readError(data)
-			}
-			return false
-		},
-		NotificationTypeStatusResponse,
-		NotificationTypeErr)
-	defer expect.Unsubscribe()
+func (c *Conn) GetStatus(ctx context.Context, key PublicKey) (*StatusResponseNotification, error) {
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeStatusResponse, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeGetStatusCommand(c.tx, &key); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
+	res, err, _ := next()
+	if err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	return &status, err
+	switch t := res.(type) {
+	case *StatusResponseNotification:
+		return t, nil
+	case *ErrNotification:
+		return nil, poop.Chain(t.Error())
+	}
+
+	panic("unreachable")
 }
 
 // SetAdvertLatLon sets the advert latitude and longitude.

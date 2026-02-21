@@ -262,51 +262,6 @@ func (c *ChannelMessage) readFrom(r io.Reader) error {
 	return nil
 }
 
-type StatusResponse struct {
-	PubKeyPrefix [6]byte
-	StatusData   []byte
-}
-
-func (s *StatusResponse) readFrom(r io.Reader) error {
-	var reserved byte
-	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
-		return poop.Chain(err)
-	}
-
-	if _, err := io.ReadFull(r, s.PubKeyPrefix[:]); err != nil {
-		return poop.Chain(err)
-	}
-
-	var err error
-	s.StatusData, err = io.ReadAll(r)
-	if err != nil {
-		return poop.Chain(err)
-	}
-
-	return nil
-}
-
-type SendResponse struct {
-	Type           int8   // 1 = flood, 0 = direct
-	ExpectedAckCRC uint32 // can also serve as a tag
-	EstTimeout     time.Duration
-}
-
-func (s *SendResponse) readFrom(r io.Reader) error {
-	if err := binary.Read(r, binary.LittleEndian, &s.Type); err != nil {
-		return poop.Chain(err)
-	}
-	if err := binary.Read(r, binary.LittleEndian, &s.ExpectedAckCRC); err != nil {
-		return poop.Chain(err)
-	}
-	var timeout uint32
-	if err := binary.Read(r, binary.LittleEndian, &timeout); err != nil {
-		return poop.Chain(err)
-	}
-	s.EstTimeout = time.Duration(timeout) * time.Millisecond
-	return nil
-}
-
 type SignStartResponse struct {
 	MaxSignDataLen uint32
 }
