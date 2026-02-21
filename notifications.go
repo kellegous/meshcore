@@ -171,6 +171,8 @@ func readNotification(code NotificationCode, data []byte) (Notification, error) 
 		return readStatusResponseNotification(data)
 	case NotificationTypeBinaryResponse:
 		return readBinaryResponseNotification(data)
+	case NotificationTypeTraceData:
+		return readTraceDataNotification(data)
 	case NotificationTypeTelemetryResponse:
 		return readTelemetryResponseNotification(data)
 	}
@@ -614,6 +616,23 @@ func readBinaryResponseNotification(data []byte) (*BinaryResponseNotification, e
 	var err error
 	n.ResponseData, err = io.ReadAll(r)
 	if err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &n, nil
+}
+
+type TraceDataNotification struct {
+	TraceData TraceData
+}
+
+func (e *TraceDataNotification) NotificationCode() NotificationCode {
+	return NotificationTypeTraceData
+}
+
+func readTraceDataNotification(data []byte) (*TraceDataNotification, error) {
+	var n TraceDataNotification
+	r := bytes.NewReader(data)
+	if err := n.TraceData.readFrom(r); err != nil {
 		return nil, poop.Chain(err)
 	}
 	return &n, nil

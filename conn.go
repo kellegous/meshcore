@@ -1076,46 +1076,37 @@ func (c *Conn) GetNeighbours(
 
 // TracePath traces the given path and returns the trace data.
 func (c *Conn) TracePath(ctx context.Context, path []byte) (*TraceData, error) {
-	var traceData TraceData
-	var err error
-
 	// generate a random tag for this trace, so we can listen for the correct response
 	var tag uint32
 	if err := binary.Read(rand.Reader, binary.LittleEndian, &tag); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	expect := expect(
-		c.tx,
-		func(code NotificationCode, data []byte) bool {
-			switch code {
-			case NotificationTypeTraceData:
-				err = traceData.readFrom(bytes.NewReader(data))
-				if err != nil {
-					return false
-				}
-				if traceData.Tag != tag {
-					// not the right data, continue
-					return true
-				}
-			case NotificationTypeErr:
-				err = readError(data)
-			}
-			return false
-		},
-		NotificationTypeTraceData,
-		NotificationTypeErr)
-	defer expect.Unsubscribe()
+	next, done := iter.Pull2(
+		c.tx.Subscribe2(ctx, NotificationTypeTraceData, NotificationTypeErr),
+	)
+	defer done()
 
 	if err := writeSendTracePathCommand(c.tx, tag, 0 /* auth */, path); err != nil {
 		return nil, poop.Chain(err)
 	}
 
-	if err := expect.Wait(ctx); err != nil {
-		return nil, poop.Chain(err)
-	}
+	for {
+		res, err, _ := next()
+		if err != nil {
+			return nil, poop.Chain(err)
+		}
 
-	return &traceData, err
+		switch t := res.(type) {
+		case *TraceDataNotification:
+			if t.TraceData.Tag != tag {
+				continue
+			}
+			return &t.TraceData, nil
+		case *ErrNotification:
+			return nil, poop.Chain(t.Error())
+		}
+	}
 }
 
 func (c *Conn) Login(ctx context.Context, key PublicKey, password string) error {
