@@ -2032,8 +2032,8 @@ func TestOnNewAdvert(t *testing.T) {
 	controller := DoCommand(func(conn *Conn) {
 		next, done := iter.Pull2(
 			conn.Notifications(t.Context(),
-				NotificationTypeNewAdvert,
-				NotificationTypeAdvert,
+				ResponsePushNewAdvert,
+				ResponsePushAdvert,
 			),
 		)
 		defer done()
