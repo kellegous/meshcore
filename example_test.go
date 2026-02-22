@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/kellegous/meshcore"
 	"github.com/kellegous/meshcore/serial"
@@ -39,4 +40,22 @@ func ExampleConn_SendTextMessage() {
 	}
 
 	fmt.Printf("sent message: %+v\n", sr)
+}
+
+var (
+	conn    *meshcore.Conn
+	ctx     context.Context
+	contact *meshcore.Contact
+)
+
+func ExampleConn() {
+	// Use context.WithTimeout for timeouts.
+	ctx, done := context.WithTimeout(ctx, 10*time.Second)
+	defer done()
+
+	status, err := conn.GetStatus(ctx, contact.PublicKey)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("status: %+v\n", status)
 }

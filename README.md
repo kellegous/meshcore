@@ -54,6 +54,31 @@ if err != nil {
 fmt.Printf("sent message: %+v\n", sr)
 ```
 
+### Enforcing timeouts
+
+An important note on timeouts. Most commands in the MeshCore companion radio protocol work by issuing a command and then waiting for a response to return from the device. Many common failures result in the device never responding to the command. Thus, **you should always use a context with a timeout when calling any of the methods on `Conn`** (`Notifications` is an exception to this rule since it returns an iterator). A `context.Context` is the proper way to do timeouts in Go, so this library assumes the callers will setup a reasonable timeout.
+
+[example]: # "example_test.go:ExampleConn"
+
+```go
+import (
+	"context"
+	"fmt"
+	"log"
+	"time"
+)
+
+// Use context.WithTimeout for timeouts.
+ctx, done := context.WithTimeout(ctx, 10*time.Second)
+defer done()
+
+status, err := conn.GetStatus(ctx, contact.PublicKey)
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Printf("status: %+v\n", status)
+```
+
 ### Connecting to a device by name over Bluetooth:
 
 [example]: # "bluetooth/example_test.go:ExampleClient_LookupDevice"
