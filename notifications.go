@@ -610,8 +610,7 @@ func readStatusResponseNotification(data []byte) (*StatusNotification, error) {
 }
 
 type BinaryResponseNotification struct {
-	Tag          uint32
-	ResponseData []byte
+	BinaryResponse BinaryResponse
 }
 
 func (e *BinaryResponseNotification) NotificationCode() NotificationCode {
@@ -620,17 +619,7 @@ func (e *BinaryResponseNotification) NotificationCode() NotificationCode {
 
 func readBinaryResponseNotification(data []byte) (*BinaryResponseNotification, error) {
 	var n BinaryResponseNotification
-	r := bytes.NewReader(data)
-	var reserved byte
-	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
-		return nil, poop.Chain(err)
-	}
-	if err := binary.Read(r, binary.LittleEndian, &n.Tag); err != nil {
-		return nil, poop.Chain(err)
-	}
-	var err error
-	n.ResponseData, err = io.ReadAll(r)
-	if err != nil {
+	if err := n.BinaryResponse.readFrom(bytes.NewReader(data)); err != nil {
 		return nil, poop.Chain(err)
 	}
 	return &n, nil

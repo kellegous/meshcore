@@ -1502,7 +1502,7 @@ func TestSendBinaryRequest(t *testing.T) {
 		return byte(i + 1)
 	})
 	tag := uint32(1234567890)
-	expected := &BinaryResponseNotification{
+	expected := &BinaryResponse{
 		Tag:          tag,
 		ResponseData: payload,
 	}
@@ -1979,11 +1979,6 @@ func TestLogin(t *testing.T) {
 }
 
 func TestPushNotifications(t *testing.T) {
-	type rawData struct {
-		Code NotificationCode
-		Data []byte
-	}
-
 	tests := []struct {
 		Name string
 		Code NotificationCode
@@ -2047,6 +2042,49 @@ func TestPushNotifications(t *testing.T) {
 				return BytesFrom(
 					Uint32(expected.ACKCode, binary.LittleEndian),
 					Uint32(1234, binary.LittleEndian),
+				), expected
+			},
+		},
+
+		{
+			Name: "BinaryResponse",
+			Code: NotificationTypeBinaryResponse,
+			Data: func() ([]byte, Notification) {
+				expected := &BinaryResponseNotification{
+					BinaryResponse: BinaryResponse{
+						Tag: 1234567890,
+						ResponseData: fakeBytes(10, func(i int) byte {
+							return byte(i + 1)
+						}),
+					},
+				}
+				return BytesFrom(
+					Byte(0),
+					Uint32(expected.BinaryResponse.Tag, binary.LittleEndian),
+					Bytes(expected.BinaryResponse.ResponseData...),
+				), expected
+			},
+		},
+
+		{
+			Name: "StatusResponse",
+			Code: NotificationTypeStatus,
+			Data: func() ([]byte, Notification) {
+				publicKey := fakePublicKey(42)
+				expected := &StatusNotification{
+					Status: Status{
+						PubKeyPrefix: func() [6]byte {
+							var buf [6]byte
+							copy(buf[:], publicKey.Prefix(6))
+							return buf
+						}(),
+						StatusData: []byte{1, 2, 3},
+					},
+				}
+				return BytesFrom(
+					Byte(0),
+					Bytes(expected.Status.PubKeyPrefix[:]...),
+					Bytes(expected.Status.StatusData...),
 				), expected
 			},
 		},

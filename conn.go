@@ -588,9 +588,10 @@ func (c *Conn) ImportPrivateKey(ctx context.Context, privateKey []byte) error {
 	panic("unreachable")
 }
 
-// TODO(kellegous): This is not working on real devices currently. We seed the
-// SentResponse arrive, but we never get a PushStatusResponse.
+// GetStatus returns the status of the given key.
 func (c *Conn) GetStatus(ctx context.Context, key PublicKey) (*Status, error) {
+	// TODO(kellegous): This is not working on real devices currently. We seed the
+	// SentResponse arrive, but we never get a PushStatusResponse.
 	next, done := iter.Pull2(
 		c.tx.Subscribe(ctx, NotificationTypeStatus, NotificationTypeErr),
 	)
@@ -866,7 +867,7 @@ func (c *Conn) SendBinaryRequest(
 	ctx context.Context,
 	recipient PublicKey,
 	payload []byte,
-) (*BinaryResponseNotification, error) {
+) (*BinaryResponse, error) {
 	next, done := iter.Pull2(
 		c.tx.Subscribe(ctx, NotificationTypeSent, NotificationTypeBinaryResponse, NotificationTypeErr),
 	)
@@ -897,10 +898,10 @@ func (c *Conn) SendBinaryRequest(
 
 		switch t := res.(type) {
 		case *BinaryResponseNotification:
-			if t.Tag != tag {
+			if t.BinaryResponse.Tag != tag {
 				continue
 			}
-			return t, nil
+			return &t.BinaryResponse, nil
 		}
 	}
 }

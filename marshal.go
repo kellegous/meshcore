@@ -229,6 +229,27 @@ func (s *Status) readFrom(r io.Reader) error {
 	return nil
 }
 
+type BinaryResponse struct {
+	Tag          uint32
+	ResponseData []byte
+}
+
+func (b *BinaryResponse) readFrom(r io.Reader) error {
+	var reserved byte
+	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
+		return poop.Chain(err)
+	}
+	if err := binary.Read(r, binary.LittleEndian, &b.Tag); err != nil {
+		return poop.Chain(err)
+	}
+	var err error
+	b.ResponseData, err = io.ReadAll(r)
+	if err != nil {
+		return poop.Chain(poop.Chain(err))
+	}
+	return nil
+}
+
 func readCString(r io.Reader, maxLen int) (string, error) {
 	buf := make([]byte, maxLen)
 	if _, err := io.ReadFull(r, buf[:]); err != nil {

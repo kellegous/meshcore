@@ -245,6 +245,7 @@ var sections = Sections{
 			},
 			{
 				Title: "Push StatusResponse",
+				Done:  true,
 			},
 			{
 				Title: "Push LogRxData",
@@ -261,6 +262,7 @@ var sections = Sections{
 			},
 			{
 				Title: "Push BinaryResponse",
+				Done:  true,
 			},
 		},
 	},
