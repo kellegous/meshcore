@@ -179,6 +179,8 @@ func readNotification(code NotificationCode, data []byte) (Notification, error) 
 		return readLoginFailNotification(data)
 	case NotificationTypeStatus:
 		return readStatusResponseNotification(data)
+	case NotificationTypeLogRxData:
+		return readLogRxDataNotification(data)
 	case NotificationTypeBinaryResponse:
 		return readBinaryResponseNotification(data)
 	case NotificationTypeTraceData:
@@ -826,4 +828,37 @@ type MsgWaitingNotification struct{}
 
 func (e *MsgWaitingNotification) NotificationCode() NotificationCode {
 	return NotificationTypeMsgWaiting
+}
+
+type LogRxDataNotification struct {
+	LastSNR  float64
+	LastRSSI int8
+	Payload  []byte
+}
+
+func (e *LogRxDataNotification) NotificationCode() NotificationCode {
+	return NotificationTypeLogRxData
+}
+
+// Not documented in the specs.
+func readLogRxDataNotification(data []byte) (*LogRxDataNotification, error) {
+	var n LogRxDataNotification
+	r := bytes.NewReader(data)
+	var lastSnr int8
+	if err := binary.Read(r, binary.LittleEndian, &lastSnr); err != nil {
+		return nil, poop.Chain(err)
+	}
+	n.LastSNR = float64(lastSnr) / 4
+
+	if err := binary.Read(r, binary.LittleEndian, &n.LastRSSI); err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	var err error
+	n.Payload, err = io.ReadAll(r)
+	if err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	return &n, nil
 }

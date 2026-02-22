@@ -2145,6 +2145,25 @@ func TestPushNotifications(t *testing.T) {
 				return BytesFrom(), &LoginFailNotification{}
 			},
 		},
+
+		{
+			Name: "LogRxData",
+			Code: NotificationTypeLogRxData,
+			Data: func() ([]byte, Notification) {
+				expected := &LogRxDataNotification{
+					LastSNR:  0.5,
+					LastRSSI: 10,
+					Payload: fakeBytes(10, func(i int) byte {
+						return byte(i + 1)
+					}),
+				}
+				return BytesFrom(
+					Byte(2),
+					Byte(byte(expected.LastRSSI)),
+					Bytes(expected.Payload...),
+				), expected
+			},
+		},
 	}
 
 	for _, test := range tests {

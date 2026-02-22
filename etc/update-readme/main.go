@@ -253,6 +253,7 @@ var sections = Sections{
 			},
 			{
 				Title: "Push LogRxData",
+				Done:  true,
 			},
 			{
 				Title: "Push TraceData",
