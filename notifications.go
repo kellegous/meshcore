@@ -13,86 +13,108 @@ import (
 
 // TODO(kellegous): Has to be exported?
 type Notification interface {
-	NotificationCode() NotificationCode
+	NotificationCode() ResponseCode
 }
 
 // TODO(kellegous): Has to be exported?
-type NotificationCode byte
+type ResponseCode byte
 
 const (
 	// Response notifications, arrive in response to a command.
-	NotificationTypeOk             NotificationCode = 0
-	NotificationTypeErr            NotificationCode = 1
-	NotificationTypeContactsStart  NotificationCode = 2
-	NotificationTypeContact        NotificationCode = 3
-	NotificationTypeEndOfContacts  NotificationCode = 4
-	NotificationTypeSelfInfo       NotificationCode = 5
-	NotificationTypeSent           NotificationCode = 6
-	NotificationTypeContactMsgRecv NotificationCode = 7
-	NotificationTypeChannelMsgRecv NotificationCode = 8
-	NotificationTypeCurrTime       NotificationCode = 9
-	NotificationTypeNoMoreMessages NotificationCode = 10
-	NotificationTypeExportContact  NotificationCode = 11
-	NotificationTypeBatteryVoltage NotificationCode = 12
-	NotificationTypeDeviceInfo     NotificationCode = 13
-	NotificationTypePrivateKey     NotificationCode = 14
-	NotificationTypeDisabled       NotificationCode = 15
-	NotificationTypeChannelInfo    NotificationCode = 18
-	NotificationTypeSignStart      NotificationCode = 19
-	NotificationTypeSignature      NotificationCode = 20
+	ResponseOk             ResponseCode = 0
+	ResponseErr            ResponseCode = 1
+	ResponseContactsStart  ResponseCode = 2
+	ResponseContact        ResponseCode = 3
+	ResponseEndOfContacts  ResponseCode = 4
+	ResponseSelfInfo       ResponseCode = 5
+	ResponseSent           ResponseCode = 6
+	ResponseContactMsgRecv ResponseCode = 7
+	ResponseChannelMsgRecv ResponseCode = 8
+	ResponseCurrTime       ResponseCode = 9
+	ResponseNoMoreMessages ResponseCode = 10
+	ResponseExportContact  ResponseCode = 11
+	ResponseBatteryVoltage ResponseCode = 12
+	ResponseDeviceInfo     ResponseCode = 13
+	ResponsePrivateKey     ResponseCode = 14
+	ResponseDisabled       ResponseCode = 15
+	ResponseChannelInfo    ResponseCode = 18
+	ResponseSignStart      ResponseCode = 19
+	ResponseSignature      ResponseCode = 20
 	// Push notifications, can arrive without a corresponding command.
-	NotificationTypeAdvert            NotificationCode = 0x80 // when companion is set to auto add contacts
-	NotificationTypePathUpdated       NotificationCode = 0x81
-	NotificationTypeSendConfirmed     NotificationCode = 0x82
-	NotificationTypeMsgWaiting        NotificationCode = 0x83
-	NotificationTypeRawData           NotificationCode = 0x84
-	NotificationTypeLoginSuccess      NotificationCode = 0x85
-	NotificationTypeLoginFail         NotificationCode = 0x86 // not usable yet
-	NotificationTypeStatusResponse    NotificationCode = 0x87
-	NotificationTypeLogRxData         NotificationCode = 0x88
-	NotificationTypeTraceData         NotificationCode = 0x89
-	NotificationTypeNewAdvert         NotificationCode = 0x8A // when companion is set to manually add contacts
-	NotificationTypeTelemetryResponse NotificationCode = 0x8B
-	NotificationTypeBinaryResponse    NotificationCode = 0x8C
+	ResponsePushAdvert            ResponseCode = 0x80 // when companion is set to auto add contacts
+	ResponsePushPathUpdated       ResponseCode = 0x81
+	ResponsePushSendConfirmed     ResponseCode = 0x82
+	ResponsePushMsgWaiting        ResponseCode = 0x83
+	ResponsePushRawData           ResponseCode = 0x84
+	ResponsePushLoginSuccess      ResponseCode = 0x85
+	ResponsePushLoginFail         ResponseCode = 0x86 // not usable yet
+	ResponsePushStatusResponse    ResponseCode = 0x87
+	ResponsePushLogRxData         ResponseCode = 0x88
+	ResponsePushTraceData         ResponseCode = 0x89
+	ResponsePushNewAdvert         ResponseCode = 0x8A // when companion is set to manually add contacts
+	ResponsePushTelemetryResponse ResponseCode = 0x8B
+	ResponsePushBinaryResponse    ResponseCode = 0x8C
 )
 
-var notificationCodeText = map[NotificationCode]string{
-	NotificationTypeOk:                "Ok",
-	NotificationTypeErr:               "Err",
-	NotificationTypeContactsStart:     "ContactsStart",
-	NotificationTypeContact:           "Contact",
-	NotificationTypeEndOfContacts:     "EndOfContacts",
-	NotificationTypeSelfInfo:          "SelfInfo",
-	NotificationTypeSent:              "Sent",
-	NotificationTypeContactMsgRecv:    "ContactMsgRecv",
-	NotificationTypeChannelMsgRecv:    "ChannelMsgRecv",
-	NotificationTypeCurrTime:          "CurrTime",
-	NotificationTypeNoMoreMessages:    "NoMoreMessages",
-	NotificationTypeExportContact:     "ExportContact",
-	NotificationTypeBatteryVoltage:    "BatteryVoltage",
-	NotificationTypeDeviceInfo:        "DeviceInfo",
-	NotificationTypePrivateKey:        "PrivateKey",
-	NotificationTypeDisabled:          "Disabled",
-	NotificationTypeChannelInfo:       "ChannelInfo",
-	NotificationTypeSignStart:         "SignStart",
-	NotificationTypeSignature:         "Signature",
-	NotificationTypeAdvert:            "PushAdvert",
-	NotificationTypePathUpdated:       "PushPathUpdated",
-	NotificationTypeSendConfirmed:     "PushSendConfirmed",
-	NotificationTypeMsgWaiting:        "PushMsgWaiting",
-	NotificationTypeRawData:           "PushRawData",
-	NotificationTypeLoginSuccess:      "PushLoginSuccess",
-	NotificationTypeLoginFail:         "PushLoginFail",
-	NotificationTypeStatusResponse:    "PushStatusResponse",
-	NotificationTypeLogRxData:         "PushLogRxData",
-	NotificationTypeTraceData:         "PushTraceData",
-	NotificationTypeNewAdvert:         "PushNewAdvert",
-	NotificationTypeTelemetryResponse: "PushTelemetryResponse",
-	NotificationTypeBinaryResponse:    "PushBinaryResponse",
+type NotificationType byte
+
+func (t NotificationType) responseCode() ResponseCode {
+	return ResponseCode(t)
 }
 
-func (c NotificationCode) String() string {
-	return notificationCodeText[c]
+const (
+	NotificationTypeAdvert            NotificationType = NotificationType(ResponsePushAdvert)
+	NotificationTypePathUpdated       NotificationType = NotificationType(ResponsePushPathUpdated)
+	NotificationTypeSendConfirmed     NotificationType = NotificationType(ResponsePushSendConfirmed)
+	NotificationTypeMsgWaiting        NotificationType = NotificationType(ResponsePushMsgWaiting)
+	NotificationTypeRawData           NotificationType = NotificationType(ResponsePushRawData)
+	NotificationTypeLoginSuccess      NotificationType = NotificationType(ResponsePushLoginSuccess)
+	NotificationTypeLoginFail         NotificationType = NotificationType(ResponsePushLoginFail)
+	NotificationTypeStatusResponse    NotificationType = NotificationType(ResponsePushStatusResponse)
+	NotificationTypeLogRxData         NotificationType = NotificationType(ResponsePushLogRxData)
+	NotificationTypeTraceData         NotificationType = NotificationType(ResponsePushTraceData)
+	NotificationTypeNewAdvert         NotificationType = NotificationType(ResponsePushNewAdvert)
+	NotificationTypeTelemetryResponse NotificationType = NotificationType(ResponsePushTelemetryResponse)
+	NotificationTypeBinaryResponse    NotificationType = NotificationType(ResponsePushBinaryResponse)
+)
+
+var responseCodeText = map[ResponseCode]string{
+	ResponseOk:                    "Ok",
+	ResponseErr:                   "Err",
+	ResponseContactsStart:         "ContactsStart",
+	ResponseContact:               "Contact",
+	ResponseEndOfContacts:         "EndOfContacts",
+	ResponseSelfInfo:              "SelfInfo",
+	ResponseSent:                  "Sent",
+	ResponseContactMsgRecv:        "ContactMsgRecv",
+	ResponseChannelMsgRecv:        "ChannelMsgRecv",
+	ResponseCurrTime:              "CurrTime",
+	ResponseNoMoreMessages:        "NoMoreMessages",
+	ResponseExportContact:         "ExportContact",
+	ResponseBatteryVoltage:        "BatteryVoltage",
+	ResponseDeviceInfo:            "DeviceInfo",
+	ResponsePrivateKey:            "PrivateKey",
+	ResponseDisabled:              "Disabled",
+	ResponseChannelInfo:           "ChannelInfo",
+	ResponseSignStart:             "SignStart",
+	ResponseSignature:             "Signature",
+	ResponsePushAdvert:            "PushAdvert",
+	ResponsePushPathUpdated:       "PushPathUpdated",
+	ResponsePushSendConfirmed:     "PushSendConfirmed",
+	ResponsePushMsgWaiting:        "PushMsgWaiting",
+	ResponsePushRawData:           "PushRawData",
+	ResponsePushLoginSuccess:      "PushLoginSuccess",
+	ResponsePushLoginFail:         "PushLoginFail",
+	ResponsePushStatusResponse:    "PushStatusResponse",
+	ResponsePushLogRxData:         "PushLogRxData",
+	ResponsePushTraceData:         "PushTraceData",
+	ResponsePushNewAdvert:         "PushNewAdvert",
+	ResponsePushTelemetryResponse: "PushTelemetryResponse",
+	ResponsePushBinaryResponse:    "PushBinaryResponse",
+}
+
+func (c ResponseCode) String() string {
+	return responseCodeText[c]
 }
 
 type ErrorCode byte
@@ -125,61 +147,61 @@ func (e *CommandError) Error() string {
 	return fmt.Sprintf("error: %d (%s)", e.Code, errorText[e.Code])
 }
 
-func readNotification(code NotificationCode, data []byte) (Notification, error) {
+func readNotification(code ResponseCode, data []byte) (Notification, error) {
 	switch code {
-	case NotificationTypeOk:
+	case ResponseOk:
 		return readOkNotification(data)
-	case NotificationTypeErr:
+	case ResponseErr:
 		return readErrNotification(data)
-	case NotificationTypeContactsStart:
+	case ResponseContactsStart:
 		return readContactStartNotification(data)
-	case NotificationTypeContact:
+	case ResponseContact:
 		return readContactNotification(data)
-	case NotificationTypeEndOfContacts:
+	case ResponseEndOfContacts:
 		return readEndOfContactsNotification(data)
-	case NotificationTypeSelfInfo:
+	case ResponseSelfInfo:
 		return readSelfInfoNotification(data)
-	case NotificationTypeSent:
+	case ResponseSent:
 		return readSentNotification(data)
-	case NotificationTypeContactMsgRecv:
+	case ResponseContactMsgRecv:
 		return readContactMsgRecvNotification(data)
-	case NotificationTypeChannelMsgRecv:
+	case ResponseChannelMsgRecv:
 		return readChannelMsgRecvNotification(data)
-	case NotificationTypeCurrTime:
+	case ResponseCurrTime:
 		return readCurrTimeNotification(data)
-	case NotificationTypeNoMoreMessages:
+	case ResponseNoMoreMessages:
 		return readNoMoreMessagesNotification(data)
-	case NotificationTypeExportContact:
+	case ResponseExportContact:
 		return readExportContactNotification(data)
-	case NotificationTypeBatteryVoltage:
+	case ResponseBatteryVoltage:
 		return readBatteryVoltageNotification(data)
-	case NotificationTypeDeviceInfo:
+	case ResponseDeviceInfo:
 		return readDeviceInfoNotification(data)
-	case NotificationTypePrivateKey:
+	case ResponsePrivateKey:
 		return readPrivateKeyNotification(data)
-	case NotificationTypeDisabled:
+	case ResponseDisabled:
 		return readDisabledNotification(data)
-	case NotificationTypeChannelInfo:
+	case ResponseChannelInfo:
 		return readChannelInfoNotification(data)
-	case NotificationTypeSignStart:
+	case ResponseSignStart:
 		return readSignStartNotification(data)
-	case NotificationTypeSignature:
+	case ResponseSignature:
 		return readSignatureNotification(data)
-	case NotificationTypeAdvert:
+	case ResponsePushAdvert:
 		return readAdvertNotification(data)
-	case NotificationTypePathUpdated:
+	case ResponsePushPathUpdated:
 		return readPathUpdatedNotification(data)
-	case NotificationTypeLoginSuccess:
+	case ResponsePushLoginSuccess:
 		return readLoginSuccessNotification(data)
-	case NotificationTypeStatusResponse:
+	case ResponsePushStatusResponse:
 		return readStatusResponseNotification(data)
-	case NotificationTypeBinaryResponse:
+	case ResponsePushBinaryResponse:
 		return readBinaryResponseNotification(data)
-	case NotificationTypeTraceData:
+	case ResponsePushTraceData:
 		return readTraceDataNotification(data)
-	case NotificationTypeNewAdvert:
+	case ResponsePushNewAdvert:
 		return readNewAdvertNotification(data)
-	case NotificationTypeTelemetryResponse:
+	case ResponsePushTelemetryResponse:
 		return readTelemetryResponseNotification(data)
 	}
 	return nil, poop.New("unknown notification code")
@@ -187,8 +209,8 @@ func readNotification(code NotificationCode, data []byte) (Notification, error) 
 
 type OkNotification struct{}
 
-func (e *OkNotification) NotificationCode() NotificationCode {
-	return NotificationTypeOk
+func (e *OkNotification) NotificationCode() ResponseCode {
+	return ResponseOk
 }
 
 func readOkNotification(_ []byte) (*OkNotification, error) {
@@ -199,8 +221,8 @@ type ErrNotification struct {
 	Code ErrorCode
 }
 
-func (e *ErrNotification) NotificationCode() NotificationCode {
-	return NotificationTypeErr
+func (e *ErrNotification) NotificationCode() ResponseCode {
+	return ResponseErr
 }
 
 func (e *ErrNotification) Error() error {
@@ -224,8 +246,8 @@ func hasErrorCode(err error, code ErrorCode) bool {
 
 type ContactStartNotification struct{}
 
-func (e *ContactStartNotification) NotificationCode() NotificationCode {
-	return NotificationTypeContactsStart
+func (e *ContactStartNotification) NotificationCode() ResponseCode {
+	return ResponseContactsStart
 }
 
 func readContactStartNotification(_ []byte) (*ContactStartNotification, error) {
@@ -236,8 +258,8 @@ type ContactNotification struct {
 	Contact Contact
 }
 
-func (e *ContactNotification) NotificationCode() NotificationCode {
-	return NotificationTypeContact
+func (e *ContactNotification) NotificationCode() ResponseCode {
+	return ResponseContact
 }
 
 func readContactNotification(data []byte) (*ContactNotification, error) {
@@ -250,8 +272,8 @@ func readContactNotification(data []byte) (*ContactNotification, error) {
 
 type EndOfContactsNotification struct{}
 
-func (e *EndOfContactsNotification) NotificationCode() NotificationCode {
-	return NotificationTypeEndOfContacts
+func (e *EndOfContactsNotification) NotificationCode() ResponseCode {
+	return ResponseEndOfContacts
 }
 
 func readEndOfContactsNotification(_ []byte) (*EndOfContactsNotification, error) {
@@ -273,8 +295,8 @@ type SelfInfoNotification struct {
 	Name              string
 }
 
-func (e *SelfInfoNotification) NotificationCode() NotificationCode {
-	return NotificationTypeSelfInfo
+func (e *SelfInfoNotification) NotificationCode() ResponseCode {
+	return ResponseSelfInfo
 }
 
 func readSelfInfoNotification(data []byte) (*SelfInfoNotification, error) {
@@ -332,8 +354,8 @@ type SentNotification struct {
 	EstTimeout     uint32
 }
 
-func (e *SentNotification) NotificationCode() NotificationCode {
-	return NotificationTypeSent
+func (e *SentNotification) NotificationCode() ResponseCode {
+	return ResponseSent
 }
 
 func readSentNotification(data []byte) (*SentNotification, error) {
@@ -355,8 +377,8 @@ type ContactMsgRecvNotification struct {
 	ContactMessage ContactMessage
 }
 
-func (e *ContactMsgRecvNotification) NotificationCode() NotificationCode {
-	return NotificationTypeContactMsgRecv
+func (e *ContactMsgRecvNotification) NotificationCode() ResponseCode {
+	return ResponseContactMsgRecv
 }
 
 func readContactMsgRecvNotification(data []byte) (*ContactMsgRecvNotification, error) {
@@ -371,8 +393,8 @@ type ChannelMsgRecvNotification struct {
 	ChannelMessage ChannelMessage
 }
 
-func (e *ChannelMsgRecvNotification) NotificationCode() NotificationCode {
-	return NotificationTypeChannelMsgRecv
+func (e *ChannelMsgRecvNotification) NotificationCode() ResponseCode {
+	return ResponseChannelMsgRecv
 }
 
 func readChannelMsgRecvNotification(data []byte) (*ChannelMsgRecvNotification, error) {
@@ -387,8 +409,8 @@ type CurrTimeNotification struct {
 	Time time.Time
 }
 
-func (e *CurrTimeNotification) NotificationCode() NotificationCode {
-	return NotificationTypeCurrTime
+func (e *CurrTimeNotification) NotificationCode() ResponseCode {
+	return ResponseCurrTime
 }
 
 func readCurrTimeNotification(data []byte) (*CurrTimeNotification, error) {
@@ -403,8 +425,8 @@ func readCurrTimeNotification(data []byte) (*CurrTimeNotification, error) {
 
 type NoMoreMessagesNotification struct{}
 
-func (e *NoMoreMessagesNotification) NotificationCode() NotificationCode {
-	return NotificationTypeNoMoreMessages
+func (e *NoMoreMessagesNotification) NotificationCode() ResponseCode {
+	return ResponseNoMoreMessages
 }
 
 func readNoMoreMessagesNotification(_ []byte) (*NoMoreMessagesNotification, error) {
@@ -415,8 +437,8 @@ type ExportContactNotification struct {
 	AdvertPacket []byte
 }
 
-func (e *ExportContactNotification) NotificationCode() NotificationCode {
-	return NotificationTypeExportContact
+func (e *ExportContactNotification) NotificationCode() ResponseCode {
+	return ResponseExportContact
 }
 
 func readExportContactNotification(data []byte) (*ExportContactNotification, error) {
@@ -430,8 +452,8 @@ type BatteryVoltageNotification struct {
 	Voltage uint16
 }
 
-func (e *BatteryVoltageNotification) NotificationCode() NotificationCode {
-	return NotificationTypeBatteryVoltage
+func (e *BatteryVoltageNotification) NotificationCode() ResponseCode {
+	return ResponseBatteryVoltage
 }
 
 func readBatteryVoltageNotification(data []byte) (*BatteryVoltageNotification, error) {
@@ -447,8 +469,8 @@ type DeviceInfoNotification struct {
 	DeviceInfo DeviceInfo
 }
 
-func (e *DeviceInfoNotification) NotificationCode() NotificationCode {
-	return NotificationTypeDeviceInfo
+func (e *DeviceInfoNotification) NotificationCode() ResponseCode {
+	return ResponseDeviceInfo
 }
 
 func readDeviceInfoNotification(data []byte) (*DeviceInfoNotification, error) {
@@ -463,8 +485,8 @@ type PrivateKeyNotification struct {
 	PrivateKey [64]byte
 }
 
-func (e *PrivateKeyNotification) NotificationCode() NotificationCode {
-	return NotificationTypePrivateKey
+func (e *PrivateKeyNotification) NotificationCode() ResponseCode {
+	return ResponsePrivateKey
 }
 
 func readPrivateKeyNotification(data []byte) (*PrivateKeyNotification, error) {
@@ -478,8 +500,8 @@ func readPrivateKeyNotification(data []byte) (*PrivateKeyNotification, error) {
 
 type DisabledNotification struct{}
 
-func (e *DisabledNotification) NotificationCode() NotificationCode {
-	return NotificationTypeDisabled
+func (e *DisabledNotification) NotificationCode() ResponseCode {
+	return ResponseDisabled
 }
 
 func readDisabledNotification(_ []byte) (*DisabledNotification, error) {
@@ -490,8 +512,8 @@ type ChannelInfoNotification struct {
 	ChannelInfo ChannelInfo
 }
 
-func (e *ChannelInfoNotification) NotificationCode() NotificationCode {
-	return NotificationTypeChannelInfo
+func (e *ChannelInfoNotification) NotificationCode() ResponseCode {
+	return ResponseChannelInfo
 }
 
 func readChannelInfoNotification(data []byte) (*ChannelInfoNotification, error) {
@@ -506,8 +528,8 @@ type SignStartNotification struct {
 	MaxSignDataLen uint32
 }
 
-func (e *SignStartNotification) NotificationCode() NotificationCode {
-	return NotificationTypeSignStart
+func (e *SignStartNotification) NotificationCode() ResponseCode {
+	return ResponseSignStart
 }
 
 func readSignStartNotification(data []byte) (*SignStartNotification, error) {
@@ -527,8 +549,8 @@ type SignatureNotification struct {
 	Signature [64]byte
 }
 
-func (e *SignatureNotification) NotificationCode() NotificationCode {
-	return NotificationTypeSignature
+func (e *SignatureNotification) NotificationCode() ResponseCode {
+	return ResponseSignature
 }
 
 func readSignatureNotification(data []byte) (*SignatureNotification, error) {
@@ -544,8 +566,8 @@ type AdvertNotification struct {
 	PublicKey PublicKey
 }
 
-func (e *AdvertNotification) NotificationCode() NotificationCode {
-	return NotificationTypeAdvert
+func (e *AdvertNotification) NotificationCode() ResponseCode {
+	return ResponsePushAdvert
 }
 
 func readAdvertNotification(data []byte) (*AdvertNotification, error) {
@@ -560,8 +582,8 @@ type PathUpdatedNotification struct {
 	PublicKey PublicKey
 }
 
-func (e *PathUpdatedNotification) NotificationCode() NotificationCode {
-	return NotificationTypePathUpdated
+func (e *PathUpdatedNotification) NotificationCode() ResponseCode {
+	return ResponsePushPathUpdated
 }
 
 func readPathUpdatedNotification(data []byte) (*PathUpdatedNotification, error) {
@@ -576,8 +598,8 @@ type LoginSuccessNotification struct {
 	PubKeyPrefix [6]byte
 }
 
-func (e *LoginSuccessNotification) NotificationCode() NotificationCode {
-	return NotificationTypeLoginSuccess
+func (e *LoginSuccessNotification) NotificationCode() ResponseCode {
+	return ResponsePushLoginSuccess
 }
 
 func readLoginSuccessNotification(data []byte) (*LoginSuccessNotification, error) {
@@ -598,8 +620,8 @@ type StatusResponseNotification struct {
 	StatusData   []byte
 }
 
-func (e *StatusResponseNotification) NotificationCode() NotificationCode {
-	return NotificationTypeStatusResponse
+func (e *StatusResponseNotification) NotificationCode() ResponseCode {
+	return ResponsePushStatusResponse
 }
 
 func readStatusResponseNotification(data []byte) (*StatusResponseNotification, error) {
@@ -626,8 +648,8 @@ type BinaryResponseNotification struct {
 	ResponseData []byte
 }
 
-func (e *BinaryResponseNotification) NotificationCode() NotificationCode {
-	return NotificationTypeBinaryResponse
+func (e *BinaryResponseNotification) NotificationCode() ResponseCode {
+	return ResponsePushBinaryResponse
 }
 
 func readBinaryResponseNotification(data []byte) (*BinaryResponseNotification, error) {
@@ -652,8 +674,8 @@ type TraceDataNotification struct {
 	TraceData TraceData
 }
 
-func (e *TraceDataNotification) NotificationCode() NotificationCode {
-	return NotificationTypeTraceData
+func (e *TraceDataNotification) NotificationCode() ResponseCode {
+	return ResponsePushTraceData
 }
 
 func readTraceDataNotification(data []byte) (*TraceDataNotification, error) {
@@ -676,8 +698,8 @@ type NewAdvertNotification struct {
 	AdvLon     float64
 }
 
-func (e *NewAdvertNotification) NotificationCode() NotificationCode {
-	return NotificationTypeNewAdvert
+func (e *NewAdvertNotification) NotificationCode() ResponseCode {
+	return ResponsePushNewAdvert
 }
 
 func readNewAdvertNotification(data []byte) (*NewAdvertNotification, error) {
@@ -724,8 +746,8 @@ type TelemetryResponseNotification struct {
 	LPPSensorData []byte
 }
 
-func (e *TelemetryResponseNotification) NotificationCode() NotificationCode {
-	return NotificationTypeTelemetryResponse
+func (e *TelemetryResponseNotification) NotificationCode() ResponseCode {
+	return ResponsePushTelemetryResponse
 }
 
 func readTelemetryResponseNotification(data []byte) (*TelemetryResponseNotification, error) {

@@ -76,7 +76,7 @@ func Connect(
 				return
 			}
 
-			code := meshcore.NotificationCode(data[0])
+			code := meshcore.ResponseCode(data[0])
 			if nf := options.onNotification; nf != nil {
 				nf(code, data[1:])
 			}

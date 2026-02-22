@@ -15,10 +15,10 @@ func TestShutdown(t *testing.T) {
 	t.Run("shdown cancels subscriptions", func(t *testing.T) {
 		nc := NewNotificationCenter()
 
-		nextA, doneA := iter.Pull2(nc.Subscribe(t.Context(), NotificationTypeOk))
+		nextA, doneA := iter.Pull2(nc.Subscribe(t.Context(), ResponseOk))
 		defer doneA()
 
-		nextB, doneB := iter.Pull2(nc.Subscribe(t.Context(), NotificationTypeOk))
+		nextB, doneB := iter.Pull2(nc.Subscribe(t.Context(), ResponseOk))
 		defer doneB()
 
 		nc.Shutdown()

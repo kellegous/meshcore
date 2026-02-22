@@ -38,13 +38,13 @@ func TestReadNotification(t *testing.T) {
 
 	tests := []struct {
 		Name     string
-		Code     NotificationCode
+		Code     ResponseCode
 		Data     []byte
 		Expected expected
 	}{
 		{
 			Name: "Ok",
-			Code: NotificationTypeOk,
+			Code: ResponseOk,
 			Data: nil,
 			Expected: expected{
 				Notification: &OkNotification{},
@@ -52,7 +52,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "Err (w/ code)",
-			Code: NotificationTypeErr,
+			Code: ResponseErr,
 			Data: []byte{0x01},
 			Expected: expected{
 				Notification: &ErrNotification{Code: ErrorCodeUnsupportedCommand},
@@ -60,7 +60,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "Err (w/o code)",
-			Code: NotificationTypeErr,
+			Code: ResponseErr,
 			Data: []byte{},
 			Expected: expected{
 				Notification: &ErrNotification{Code: ErrorCodeUnknown},
@@ -68,7 +68,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "ContactsStart",
-			Code: NotificationTypeContactsStart,
+			Code: ResponseContactsStart,
 			Data: nil,
 			Expected: expected{
 				Notification: &ContactStartNotification{},
@@ -76,7 +76,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "Contact",
-			Code: NotificationTypeContact,
+			Code: ResponseContact,
 			Data: BytesFrom(
 				Bytes(fakePublicKey.Bytes()...),
 				Byte(byte(ContactTypeChat)),
@@ -105,7 +105,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "EndOfContacts",
-			Code: NotificationTypeEndOfContacts,
+			Code: ResponseEndOfContacts,
 			Data: nil,
 			Expected: expected{
 				Notification: &EndOfContactsNotification{},
@@ -113,7 +113,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "SelfInfo",
-			Code: NotificationTypeSelfInfo,
+			Code: ResponseSelfInfo,
 			Data: BytesFrom(
 				Byte(byte(1)),
 				Byte(byte(20)), // TxPower
@@ -147,7 +147,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "Sent",
-			Code: NotificationTypeSent,
+			Code: ResponseSent,
 			Data: BytesFrom(
 				Byte(byte(1)),
 				Uint32(1234567890, binary.LittleEndian),
@@ -163,7 +163,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "ContactMsgRecv",
-			Code: NotificationTypeContactMsgRecv,
+			Code: ResponseContactMsgRecv,
 			Data: BytesFrom(
 				Bytes(fakePublicKeyPrefix[:]...),
 				Byte(byte(2)),
@@ -185,7 +185,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "ChannelMsgRecv",
-			Code: NotificationTypeChannelMsgRecv,
+			Code: ResponseChannelMsgRecv,
 			Data: BytesFrom(
 				Byte(byte(1)),
 				Byte(byte(2)),
@@ -207,7 +207,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "CurrTime",
-			Code: NotificationTypeCurrTime,
+			Code: ResponseCurrTime,
 			Data: BytesFrom(
 				Time(time.Unix(100, 0), binary.LittleEndian),
 			),
@@ -219,7 +219,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "NoMoreMessages",
-			Code: NotificationTypeNoMoreMessages,
+			Code: ResponseNoMoreMessages,
 			Data: nil,
 			Expected: expected{
 				Notification: &NoMoreMessagesNotification{},
@@ -227,7 +227,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "ExportContact",
-			Code: NotificationTypeExportContact,
+			Code: ResponseExportContact,
 			Data: BytesFrom(
 				Bytes(1, 2, 3, 4, 5, 6),
 			),
@@ -239,7 +239,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "BatteryVoltage",
-			Code: NotificationTypeBatteryVoltage,
+			Code: ResponseBatteryVoltage,
 			Data: BytesFrom(
 				Uint16(12345, binary.LittleEndian),
 			),
@@ -251,7 +251,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "DeviceInfo",
-			Code: NotificationTypeDeviceInfo,
+			Code: ResponseDeviceInfo,
 			Data: BytesFrom(
 				Byte(byte(1)),
 				Bytes(0, 0, 0, 0, 0, 0), // reserved 6 bytes
@@ -270,7 +270,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "PrivateKey",
-			Code: NotificationTypePrivateKey,
+			Code: ResponsePrivateKey,
 			Data: BytesFrom(
 				Bytes(fakePrivateKey[:]...),
 			),
@@ -282,7 +282,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "Disabled",
-			Code: NotificationTypeDisabled,
+			Code: ResponseDisabled,
 			Data: nil,
 			Expected: expected{
 				Notification: &DisabledNotification{},
@@ -290,7 +290,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "ChannelInfo",
-			Code: NotificationTypeChannelInfo,
+			Code: ResponseChannelInfo,
 			Data: BytesFrom(
 				Byte(byte(1)),
 				CString("test", 32),
@@ -308,7 +308,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "SignStart",
-			Code: NotificationTypeSignStart,
+			Code: ResponseSignStart,
 			Data: BytesFrom(
 				Byte(byte(0)),
 				Uint32(1024, binary.LittleEndian),
@@ -321,7 +321,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "Signature",
-			Code: NotificationTypeSignature,
+			Code: ResponseSignature,
 			Data: BytesFrom(
 				Bytes(fakePrivateKey[:]...),
 			),
@@ -333,7 +333,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "Advert",
-			Code: NotificationTypeAdvert,
+			Code: ResponsePushAdvert,
 			Data: BytesFrom(
 				Bytes(fakePublicKey.Bytes()...),
 			),
@@ -345,7 +345,7 @@ func TestReadNotification(t *testing.T) {
 		},
 		{
 			Name: "PathUpdated",
-			Code: NotificationTypePathUpdated,
+			Code: ResponsePushPathUpdated,
 			Data: BytesFrom(
 				Bytes(fakePublicKey.Bytes()...),
 			),

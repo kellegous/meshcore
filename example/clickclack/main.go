@@ -114,11 +114,11 @@ func connect(ctx context.Context, name string) (*meshcore.Conn, error) {
 			return nil, poop.Chain(err)
 		}
 		return client.Connect(ctx, device.Address,
-			meshcore_bluetooth.WithNotificationCallback(func(code meshcore.NotificationCode, data []byte) {
+			meshcore_bluetooth.WithNotificationCallback(func(code meshcore.ResponseCode, data []byte) {
 				fmt.Printf("<notification: %v>\n", code)
 			}))
 	case "usb", "serial":
-		return meshcore_serial.Connect(ctx, addr, meshcore_serial.WithNotificationCallback(func(code meshcore.NotificationCode, data []byte) {
+		return meshcore_serial.Connect(ctx, addr, meshcore_serial.WithNotificationCallback(func(code meshcore.ResponseCode, data []byte) {
 			fmt.Printf("<notification: %v>\n", code)
 		}))
 	}
@@ -151,7 +151,7 @@ func discover(
 ) error {
 	g, bgCtx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		for advert, err := range listener.Notifications(bgCtx, meshcore.NotificationTypeAdvert) {
+		for advert, err := range listener.Notifications(bgCtx, meshcore.ResponsePushAdvert) {
 			if err != nil {
 				return poop.Chain(err)
 			}
