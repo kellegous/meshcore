@@ -11,12 +11,10 @@ import (
 	"github.com/kellegous/poop"
 )
 
-// TODO(kellegous): Has to be exported?
 type Notification interface {
 	NotificationCode() NotificationCode
 }
 
-// TODO(kellegous): Has to be exported?
 type NotificationCode byte
 
 const (
@@ -593,29 +591,17 @@ func readLoginSuccessNotification(data []byte) (*LoginSuccessNotification, error
 	return &n, nil
 }
 
-type StatusResponseNotification struct {
-	PubKeyPrefix [6]byte
-	StatusData   []byte
+type StatusNotification struct {
+	Status Status
 }
 
-func (e *StatusResponseNotification) NotificationCode() NotificationCode {
+func (e *StatusNotification) NotificationCode() NotificationCode {
 	return NotificationTypeStatusResponse
 }
 
-func readStatusResponseNotification(data []byte) (*StatusResponseNotification, error) {
-	var n StatusResponseNotification
-	r := bytes.NewReader(data)
-	var reserved byte
-	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
-		return nil, poop.Chain(err)
-	}
-	if _, err := io.ReadFull(r, n.PubKeyPrefix[:]); err != nil {
-		return nil, poop.Chain(err)
-	}
-
-	var err error
-	n.StatusData, err = io.ReadAll(r)
-	if err != nil {
+func readStatusResponseNotification(data []byte) (*StatusNotification, error) {
+	var n StatusNotification
+	if err := n.Status.readFrom(bytes.NewReader(data)); err != nil {
 		return nil, poop.Chain(err)
 	}
 	return &n, nil

@@ -590,7 +590,7 @@ func (c *Conn) ImportPrivateKey(ctx context.Context, privateKey []byte) error {
 
 // TODO(kellegous): This is not working on real devices currently. We seed the
 // SentResponse arrive, but we never get a PushStatusResponse.
-func (c *Conn) GetStatus(ctx context.Context, key PublicKey) (*StatusResponseNotification, error) {
+func (c *Conn) GetStatus(ctx context.Context, key PublicKey) (*Status, error) {
 	next, done := iter.Pull2(
 		c.tx.Subscribe(ctx, NotificationTypeStatusResponse, NotificationTypeErr),
 	)
@@ -606,8 +606,8 @@ func (c *Conn) GetStatus(ctx context.Context, key PublicKey) (*StatusResponseNot
 	}
 
 	switch t := res.(type) {
-	case *StatusResponseNotification:
-		return t, nil
+	case *StatusNotification:
+		return &t.Status, nil
 	case *ErrNotification:
 		return nil, poop.Chain(t.Error())
 	}
