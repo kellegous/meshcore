@@ -151,7 +151,7 @@ func discover(
 ) error {
 	g, bgCtx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		for advert, err := range listener.Notifications(bgCtx, meshcore.ResponsePushAdvert) {
+		for advert, err := range listener.Notifications(bgCtx, meshcore.NotificationTypeAdvert) {
 			if err != nil {
 				return poop.Chain(err)
 			}

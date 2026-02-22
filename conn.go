@@ -1088,7 +1088,11 @@ func (c *Conn) Login(ctx context.Context, key PublicKey, password string) error 
 
 func (c *Conn) Notifications(
 	ctx context.Context,
-	codes ...ResponseCode,
+	types ...NotificationType,
 ) iter.Seq2[Notification, error] {
+	codes := make([]ResponseCode, len(types))
+	for i, t := range types {
+		codes[i] = t.responseCode()
+	}
 	return c.tx.Subscribe(ctx, codes...)
 }

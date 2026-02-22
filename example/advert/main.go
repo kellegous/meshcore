@@ -62,7 +62,7 @@ func run(ctx context.Context) error {
 	ctx, done := signal.NotifyContext(ctx, os.Interrupt, os.Kill)
 	defer done()
 
-	for advert, err := range conn.Notifications(ctx, meshcore.ResponsePushAdvert) {
+	for advert, err := range conn.Notifications(ctx, meshcore.NotificationTypeAdvert) {
 		if errors.Is(err, context.Canceled) {
 			break
 		} else if err != nil {
