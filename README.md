@@ -1,122 +1,103 @@
-
 # Meshcore Companion Radio in Go
 
-A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/MeshCore) device running the [Companion Radio Firmware](https://github.com/meshcore-dev/MeshCore/blob/main/examples/companion_radio/main.cpp).
+This module is the Go analog to libraries like [meshcore.js](https://github.com/meshcore-dev/meshcore.js) and [meshcore_py](https://github.com/meshcore-dev/meshcore_py). This allows you to interact with [MeshCore](https://meshcore.co.uk/) companion radio devices over Bluetooth or USB/Serial.
 
-## Status
+## Installation
 
-**Complete**
-
-```
-|██████████████████████████████████████████████████| 100%
+```bash
+go get github.com/kellegous/meshcore@latest
 ```
 
-## TODO:
+## Quick Start
 
+### Sending a text message to a contact:
 
- - [x] Transports
- 
-   - [x] BLE
- 
-   - [x] USB/Serial
- 
+[example]: # "example_test.go:ExampleConn_SendTextMessage"
 
- - [x] meshcore.Conn
- 
-   - [x] Push Advert
- 
-   - [x] Push BinaryResponse
- 
-   - [x] Push LogRxData
- 
-   - [x] Push LoginFail
- 
-   - [x] Push LoginSuccess
- 
-   - [x] Push MsgWaiting
- 
-   - [x] Push NewAdvert
- 
-   - [x] Push PathUpdated
- 
-   - [x] Push RawData
- 
-   - [x] Push SendConfirmed
- 
-   - [x] Push StatusResponse
- 
-   - [x] Push TelemetryResponse
- 
-   - [x] Push TraceData
- 
-   - [x] addOrUpdateContact
- 
-   - [x] deleteChannel
- 
-   - [x] deviceQuery
- 
-   - [x] exportContact
- 
-   - [x] exportPrivateKey
- 
-   - [x] getBatteryVoltage
- 
-   - [x] getChannel
- 
-   - [x] getChannels
- 
-   - [x] getContacts
- 
-   - [x] getDeviceTime
- 
-   - [x] getNeighbors
- 
-   - [x] getStatus
- 
-   - [x] getTelemetry
- 
-   - [x] importContact
- 
-   - [x] importPrivateKey
- 
-   - [x] login
- 
-   - [x] reboot
- 
-   - [x] removeContact
- 
-   - [x] resetPath
- 
-   - [x] sendAdvert
- 
-   - [x] sendBinaryRequest
- 
-   - [x] sendChannelTextMessage
- 
-   - [x] sendTextMessage
- 
-   - [x] setAdvertLatLong
- 
-   - [x] setAdvertName
- 
-   - [x] setChannel
- 
-   - [x] setContactPath
- 
-   - [x] setDeviceTime
- 
-   - [x] setOtherParams
- 
-   - [x] setRadioParams
- 
-   - [x] setTxPower
- 
-   - [x] shareContact
- 
-   - [x] sign
- 
-   - [x] syncNextMessage
- 
-   - [x] tracePath
- 
+```go
+ctx := context.Background()
 
+// Send a text message to a contact.
+conn, err := serial.Connect(context.Background(), "/dev/cu.usbserial-0001")
+if err != nil {
+	log.Fatal(err)
+}
+defer conn.Disconnect()
+
+contacts, err := conn.GetContacts(ctx, nil)
+if err != nil {
+	log.Fatal(err)
+}
+if len(contacts) == 0 {
+	log.Fatal("no contacts found")
+}
+contact := contacts[0]
+
+sr, err := conn.SendTextMessage(
+	ctx,
+	&contact.PublicKey,
+	"Hello, world!",
+	meshcore.TextTypePlain,
+)
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Printf("sent message: %+v\n", sr)
+```
+
+### Connecting to a device by name over Bluetooth:
+
+[example]: # "bluetooth/example_test.go:ExampleClient_LookupDevice"
+
+```go
+client, err := meshcore_bluetooth.NewClient(bluetooth.DefaultAdapter)
+if err != nil {
+	log.Fatal(err)
+}
+
+device, err := client.LookupDevice(context.Background(), "MeshCore-1234567890")
+if err != nil {
+	log.Fatal(err)
+}
+
+conn, err := client.Connect(context.Background(), device.Address)
+if err != nil {
+	log.Fatal(err)
+}
+defer conn.Disconnect()
+```
+
+### Discovering & connecting to a device over Bluetooth:
+
+[example]: # "bluetooth/example_test.go:ExampleClient_DiscoverDevices"
+
+```go
+client, err := meshcore_bluetooth.NewClient(bluetooth.DefaultAdapter)
+if err != nil {
+	log.Fatal(err)
+}
+
+ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+defer cancel()
+
+var addr *bluetooth.Address
+for device, err := range client.DiscoverDevices(ctx) {
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	addr = &device.Address
+}
+if addr == nil {
+	log.Fatal("no device found")
+}
+
+conn, err := client.Connect(ctx, *addr)
+if err != nil {
+	log.Fatal(err)
+}
+defer conn.Disconnect()
+```
+## Authors
+
+- [@kellegous](https://github.com/kellegous)
