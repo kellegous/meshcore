@@ -2088,6 +2088,63 @@ func TestPushNotifications(t *testing.T) {
 				), expected
 			},
 		},
+
+		{
+			Name: "RawData",
+			Code: NotificationTypeRawData,
+			Data: func() ([]byte, Notification) {
+				expected := &RawDataNotification{
+					LastSNR:  0.5,
+					LastRSSI: 10,
+					Payload: fakeBytes(10, func(i int) byte {
+						return byte(i + 1)
+					}),
+				}
+				return BytesFrom(
+					Byte(2),
+					Byte(byte(expected.LastRSSI)),
+					Byte(0xff),
+					Bytes(expected.Payload...),
+				), expected
+			},
+		},
+
+		{
+			Name: "MsgWaiting",
+			Code: NotificationTypeMsgWaiting,
+			Data: func() ([]byte, Notification) {
+				return BytesFrom(), &MsgWaitingNotification{}
+			},
+		},
+
+		{
+			Name: "LoginSuccess",
+			Code: NotificationTypeLoginSuccess,
+			Data: func() ([]byte, Notification) {
+				pubKey := fakePublicKey(42)
+				expected := &LoginSuccessNotification{
+					PubKeyPrefix: func() [6]byte {
+						var buf [6]byte
+						copy(buf[:], pubKey.Prefix(6))
+						return buf
+					}(),
+				}
+				return BytesFrom(
+					Byte(0), // permissions
+					Bytes(expected.PubKeyPrefix[:]...),
+					Int32(1234567890, binary.LittleEndian),
+					Byte(0),
+				), expected
+			},
+		},
+
+		{
+			Name: "LoginFail",
+			Code: NotificationTypeLoginFail,
+			Data: func() ([]byte, Notification) {
+				return BytesFrom(), &LoginFailNotification{}
+			},
+		},
 	}
 
 	for _, test := range tests {

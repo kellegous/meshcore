@@ -8,7 +8,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
 **In Progress**
 
 ```
-|███████████████████████████████████████████       | 86%
+|███████████████████████████████████████████████   | 94%
 ```
 
 ## TODO:
@@ -29,17 +29,17 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
  
    - [ ] Push LogRxData
  
-   - [ ] Push LoginFail
+   - [x] Push LoginFail
  
-   - [ ] Push LoginSuccess
+   - [x] Push LoginSuccess
  
-   - [ ] Push MsgWaiting
+   - [x] Push MsgWaiting
  
    - [x] Push NewAdvert
  
    - [x] Push PathUpdated
  
-   - [ ] Push RawData
+   - [x] Push RawData
  
    - [x] Push SendConfirmed
  

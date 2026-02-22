@@ -169,8 +169,14 @@ func readNotification(code NotificationCode, data []byte) (Notification, error) 
 		return readPathUpdatedNotification(data)
 	case NotificationTypeSendConfirmed:
 		return readSendConfirmedNotification(data)
+	case NotificationTypeMsgWaiting:
+		return &MsgWaitingNotification{}, nil
+	case NotificationTypeRawData:
+		return readRawDataNotification(data)
 	case NotificationTypeLoginSuccess:
 		return readLoginSuccessNotification(data)
+	case NotificationTypeLoginFail:
+		return readLoginFailNotification(data)
 	case NotificationTypeStatus:
 		return readStatusResponseNotification(data)
 	case NotificationTypeBinaryResponse:
@@ -580,7 +586,16 @@ func (e *LoginSuccessNotification) NotificationCode() NotificationCode {
 	return NotificationTypeLoginSuccess
 }
 
+//	PUSH_CODE_LOGIN_SUCCESS {
+//		code: byte,    // constant 0x85
+//		permissions: byte,     // is_admin if lowest bit is 1
+//		pub_key_prefix: bytes(6)     // public key prefix (first 6 bytes)
+//		tag: int32,
+//		new_permissions: byte     // V7+
+//	}
 func readLoginSuccessNotification(data []byte) (*LoginSuccessNotification, error) {
+	// TODO(kellegous): This is not complete. We only marshal the pub key
+	// but the permissions, tag and new_permissions need to be read.
 	var n LoginSuccessNotification
 	r := bytes.NewReader(data)
 	var reserved byte
@@ -591,6 +606,19 @@ func readLoginSuccessNotification(data []byte) (*LoginSuccessNotification, error
 		return nil, poop.Chain(err)
 	}
 	return &n, nil
+}
+
+type LoginFailNotification struct{}
+
+func (e *LoginFailNotification) NotificationCode() NotificationCode {
+	return NotificationTypeLoginFail
+}
+
+func readLoginFailNotification(data []byte) (*LoginFailNotification, error) {
+	// TODO(kellegous): The specs aren't clear if this has a payload. it suggests
+	// that failures are usually due to a timeout, but it doesn't say if there is
+	// a code embedded in the notification data.
+	return &LoginFailNotification{}, nil
 }
 
 type StatusNotification struct {
@@ -745,4 +773,57 @@ func readSendConfirmedNotification(data []byte) (*SendConfirmedNotification, err
 	}
 	n.RoundTrip = time.Duration(roundTrip) * time.Millisecond
 	return &n, nil
+}
+
+type RawDataNotification struct {
+	LastSNR  float64
+	LastRSSI int8
+	Payload  []byte
+}
+
+func (e *RawDataNotification) NotificationCode() NotificationCode {
+	return NotificationTypeRawData
+}
+
+//	PUSH_CODE_RAW_DATA {
+//	  code: byte,    // constant 0x84
+//	  SNR_mult_4: signed-byte,     // SNR * 4
+//	  RSSI: signed-byte,
+//	  reserved: byte,     // constant 0xFF
+//	  payload: bytes     // remainder of frame
+//	}
+func readRawDataNotification(data []byte) (*RawDataNotification, error) {
+	var n RawDataNotification
+	r := bytes.NewReader(data)
+
+	var lastSnr int8
+	if err := binary.Read(r, binary.LittleEndian, &lastSnr); err != nil {
+		return nil, poop.Chain(err)
+	}
+	n.LastSNR = float64(lastSnr) / 4
+
+	if err := binary.Read(r, binary.LittleEndian, &n.LastRSSI); err != nil {
+		return nil, poop.Chain(err)
+	}
+	var reserved byte
+	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	if reserved != 0xff {
+		return nil, poop.New("reserved byte is not 0xff")
+	}
+
+	var err error
+	n.Payload, err = io.ReadAll(r)
+	if err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &n, nil
+}
+
+type MsgWaitingNotification struct{}
+
+func (e *MsgWaitingNotification) NotificationCode() NotificationCode {
+	return NotificationTypeMsgWaiting
 }

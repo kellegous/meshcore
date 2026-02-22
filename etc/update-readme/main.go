@@ -233,15 +233,19 @@ var sections = Sections{
 			},
 			{
 				Title: "Push MsgWaiting",
+				Done:  true,
 			},
 			{
 				Title: "Push RawData",
+				Done:  true,
 			},
 			{
 				Title: "Push LoginSuccess",
+				Done:  true,
 			},
 			{
 				Title: "Push LoginFail",
+				Done:  true,
 			},
 			{
 				Title: "Push StatusResponse",
