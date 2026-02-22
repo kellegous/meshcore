@@ -592,7 +592,7 @@ func (c *Conn) ImportPrivateKey(ctx context.Context, privateKey []byte) error {
 // SentResponse arrive, but we never get a PushStatusResponse.
 func (c *Conn) GetStatus(ctx context.Context, key PublicKey) (*Status, error) {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, NotificationTypeStatusResponse, NotificationTypeErr),
+		c.tx.Subscribe(ctx, NotificationTypeStatus, NotificationTypeErr),
 	)
 	defer done()
 

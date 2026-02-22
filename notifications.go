@@ -46,7 +46,7 @@ const (
 	NotificationTypeRawData           NotificationCode = 0x84
 	NotificationTypeLoginSuccess      NotificationCode = 0x85
 	NotificationTypeLoginFail         NotificationCode = 0x86 // not usable yet
-	NotificationTypeStatusResponse    NotificationCode = 0x87
+	NotificationTypeStatus            NotificationCode = 0x87
 	NotificationTypeLogRxData         NotificationCode = 0x88
 	NotificationTypeTraceData         NotificationCode = 0x89
 	NotificationTypeNewAdvert         NotificationCode = 0x8A // when companion is set to manually add contacts
@@ -81,7 +81,7 @@ var notificationCodeText = map[NotificationCode]string{
 	NotificationTypeRawData:           "PushRawData",
 	NotificationTypeLoginSuccess:      "PushLoginSuccess",
 	NotificationTypeLoginFail:         "PushLoginFail",
-	NotificationTypeStatusResponse:    "PushStatusResponse",
+	NotificationTypeStatus:            "PushStatus",
 	NotificationTypeLogRxData:         "PushLogRxData",
 	NotificationTypeTraceData:         "PushTraceData",
 	NotificationTypeNewAdvert:         "PushNewAdvert",
@@ -167,9 +167,11 @@ func readNotification(code NotificationCode, data []byte) (Notification, error) 
 		return readAdvertNotification(data)
 	case NotificationTypePathUpdated:
 		return readPathUpdatedNotification(data)
+	case NotificationTypeSendConfirmed:
+		return readSendConfirmedNotification(data)
 	case NotificationTypeLoginSuccess:
 		return readLoginSuccessNotification(data)
-	case NotificationTypeStatusResponse:
+	case NotificationTypeStatus:
 		return readStatusResponseNotification(data)
 	case NotificationTypeBinaryResponse:
 		return readBinaryResponseNotification(data)
@@ -596,7 +598,7 @@ type StatusNotification struct {
 }
 
 func (e *StatusNotification) NotificationCode() NotificationCode {
-	return NotificationTypeStatusResponse
+	return NotificationTypeStatus
 }
 
 func readStatusResponseNotification(data []byte) (*StatusNotification, error) {
@@ -730,5 +732,28 @@ func readTelemetryResponseNotification(data []byte) (*TelemetryResponseNotificat
 	if err != nil {
 		return nil, poop.Chain(err)
 	}
+	return &n, nil
+}
+
+type SendConfirmedNotification struct {
+	ACKCode   uint32
+	RoundTrip time.Duration
+}
+
+func (e *SendConfirmedNotification) NotificationCode() NotificationCode {
+	return NotificationTypeSendConfirmed
+}
+
+func readSendConfirmedNotification(data []byte) (*SendConfirmedNotification, error) {
+	var n SendConfirmedNotification
+	r := bytes.NewReader(data)
+	if err := binary.Read(r, binary.LittleEndian, &n.ACKCode); err != nil {
+		return nil, poop.Chain(err)
+	}
+	var roundTrip uint32
+	if err := binary.Read(r, binary.LittleEndian, &roundTrip); err != nil {
+		return nil, poop.Chain(err)
+	}
+	n.RoundTrip = time.Duration(roundTrip) * time.Millisecond
 	return &n, nil
 }

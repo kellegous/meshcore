@@ -229,6 +229,7 @@ var sections = Sections{
 			},
 			{
 				Title: "Push SendConfirmed",
+				Done:  true,
 			},
 			{
 				Title: "Push MsgWaiting",

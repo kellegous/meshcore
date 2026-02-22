@@ -975,7 +975,7 @@ func TestGetStatus(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		controller.Notify(NotificationTypeStatusResponse, BytesFrom(
+		controller.Notify(NotificationTypeStatus, BytesFrom(
 			Byte(0),
 			Bytes(key.Prefix(6)...),
 			Bytes(1, 2, 3),
@@ -1978,105 +1978,109 @@ func TestLogin(t *testing.T) {
 	})
 }
 
-// func TestOnAdvert(t *testing.T) {
-// 	key := fakePublicKey(42)
-
-// 	subReady := make(chan struct{})
-
-// 	controller := DoCommand(func(conn *Conn) {
-// 		subTriggered := make(chan struct{})
-// 		unsub := conn.OnAdvert(func(advertEvent *AdvertEvent) {
-// 			if !reflect.DeepEqual(advertEvent.PublicKey, key) {
-// 				t.Fatalf("expected %s, got %s", describe(key), describe(advertEvent.PublicKey))
-// 			}
-
-// 			close(subTriggered)
-// 		})
-// 		defer unsub()
-
-// 		close(subReady)
-// 		<-subTriggered
-// 	})
-
-// 	<-subReady
-
-// 	controller.Notify(NotificationTypeAdvert, BytesFrom(
-// 		Bytes(key.Bytes()...),
-// 	))
-
-// 	controller.Wait()
-// }
-
-func TestOnNewAdvert(t *testing.T) {
-	outPath := fakeBytes(64, func(i int) byte {
-		return byte(i + 1)
-	})
-
-	newAdvertExpected := &NewAdvertNotification{
-		PublicKey:  fakePublicKey(42),
-		Type:       ContactTypeChat,
-		Flags:      0,
-		OutPath:    outPath[:6],
-		AdvName:    "test",
-		LastAdvert: time.Unix(420, 0),
-		AdvLat:     37.774929,
-		AdvLon:     -122.419416,
+func TestPushNotifications(t *testing.T) {
+	type rawData struct {
+		Code NotificationCode
+		Data []byte
 	}
 
-	advertExpected := &AdvertNotification{
-		PublicKey: fakePublicKey(42),
+	tests := []struct {
+		Name string
+		Code NotificationCode
+		Data func() ([]byte, Notification)
+	}{
+		{
+			Name: "NewAdvert",
+			Code: NotificationTypeNewAdvert,
+			Data: func() ([]byte, Notification) {
+				outPath := fakeBytes(64, func(i int) byte {
+					return byte(i + 1)
+				})
+
+				newAdvertExpected := &NewAdvertNotification{
+					PublicKey:  fakePublicKey(42),
+					Type:       ContactTypeChat,
+					Flags:      0,
+					OutPath:    outPath[:6],
+					AdvName:    "test",
+					LastAdvert: time.Unix(420, 0),
+					AdvLat:     37.774929,
+					AdvLon:     -122.419416,
+				}
+				return BytesFrom(
+					Bytes(newAdvertExpected.PublicKey.Bytes()...),
+					Byte(byte(newAdvertExpected.Type)),
+					Byte(newAdvertExpected.Flags),
+					Byte(byte(len(newAdvertExpected.OutPath))),
+					Bytes(outPath...),
+					CString(newAdvertExpected.AdvName, 32),
+					Time(newAdvertExpected.LastAdvert, binary.LittleEndian),
+					LatLon(newAdvertExpected.AdvLat, newAdvertExpected.AdvLon, binary.LittleEndian),
+				), newAdvertExpected
+			},
+		},
+
+		{
+			Name: "Advert",
+			Code: NotificationTypeAdvert,
+			Data: func() ([]byte, Notification) {
+				expected := &AdvertNotification{
+					PublicKey: fakePublicKey(42),
+				}
+
+				return BytesFrom(
+						Bytes(expected.PublicKey.Bytes()...),
+					), &AdvertNotification{
+						PublicKey: fakePublicKey(42),
+					}
+			},
+		},
+
+		{
+			Name: "SendConfirmed",
+			Code: NotificationTypeSendConfirmed,
+			Data: func() ([]byte, Notification) {
+				expected := &SendConfirmedNotification{
+					ACKCode:   1234567890,
+					RoundTrip: 1234 * time.Millisecond,
+				}
+				return BytesFrom(
+					Uint32(expected.ACKCode, binary.LittleEndian),
+					Uint32(1234, binary.LittleEndian),
+				), expected
+			},
+		},
 	}
 
-	subReady := make(chan struct{})
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+			packet, expected := test.Data()
 
-	controller := DoCommand(func(conn *Conn) {
-		next, done := iter.Pull2(
-			conn.Notifications(t.Context(),
-				NotificationTypeNewAdvert,
-				NotificationTypeAdvert,
-			),
-		)
-		defer done()
+			subReady := make(chan struct{})
 
-		close(subReady)
+			controller := DoCommand(func(conn *Conn) {
+				next, done := iter.Pull2(
+					conn.Notifications(t.Context(), test.Code),
+				)
+				defer done()
 
-		// NewAdvertNotification
-		res, err, _ := next()
-		if err != nil {
-			t.Fatal(poop.Flatten(err))
-		}
+				close(subReady)
 
-		if !reflect.DeepEqual(res, newAdvertExpected) {
-			t.Fatalf("expected %s, got %s", describe(newAdvertExpected), describe(res))
-		}
+				res, err, _ := next()
+				if err != nil {
+					t.Fatal(poop.Flatten(err))
+				}
 
-		// AdvertNotification
-		res, err, _ = next()
-		if err != nil {
-			t.Fatal(poop.Flatten(err))
-		}
+				if !reflect.DeepEqual(res, expected) {
+					t.Fatalf("expected %s, got %s", describe(expected), describe(res))
+				}
+			})
 
-		if !reflect.DeepEqual(res, advertExpected) {
-			t.Fatalf("expected %s, got %s", describe(advertExpected), describe(res))
-		}
-	})
+			<-subReady
 
-	<-subReady
+			controller.Notify(test.Code, packet)
 
-	controller.Notify(NotificationTypeNewAdvert, BytesFrom(
-		Bytes(newAdvertExpected.PublicKey.Bytes()...),
-		Byte(byte(ContactTypeChat)),
-		Byte(0),
-		Byte(byte(len(newAdvertExpected.OutPath))),
-		Bytes(outPath...),
-		CString("test", 32),
-		Time(time.Unix(420, 0), binary.LittleEndian),
-		LatLon(37.774929, -122.419416, binary.LittleEndian),
-	))
-
-	controller.Notify(NotificationTypeAdvert, BytesFrom(
-		Bytes(advertExpected.PublicKey.Bytes()...),
-	))
-
-	controller.Wait()
+			controller.Wait()
+		})
+	}
 }
