@@ -16,7 +16,7 @@ import (
 type Transport interface {
 	io.Writer
 	Disconnect() error
-	Subscribe(ctx context.Context, codes ...ResponseCode) iter.Seq2[Notification, error]
+	Subscribe(ctx context.Context, codes ...NotificationCode) iter.Seq2[Notification, error]
 }
 
 type Conn struct {
@@ -36,7 +36,7 @@ func (c *Conn) Disconnect() error {
 // AddOrUpdateContact adds or updates a contact on the device.
 func (c *Conn) AddOrUpdateContact(ctx context.Context, contact *Contact) error {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseOk, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeOk, NotificationTypeErr),
 	)
 	defer done()
 
@@ -64,7 +64,7 @@ func (c *Conn) AddOrUpdateContact(ctx context.Context, contact *Contact) error {
 // RemoveContact removes a contact from the device.
 func (c *Conn) RemoveContact(ctx context.Context, key *PublicKey) error {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseOk, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeOk, NotificationTypeErr),
 	)
 	defer done()
 
@@ -98,7 +98,7 @@ func (c *Conn) GetContacts(ctx context.Context, opts *GetContactsOptions) ([]*Co
 	}
 
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseContactsStart, ResponseErr, ResponseContact, ResponseEndOfContacts),
+		c.tx.Subscribe(ctx, NotificationTypeContactsStart, NotificationTypeErr, NotificationTypeContact, NotificationTypeEndOfContacts),
 	)
 	defer done()
 
@@ -136,7 +136,7 @@ func (c *Conn) GetContacts(ctx context.Context, opts *GetContactsOptions) ([]*Co
 // GetDeviceTime returns the current device time.
 func (c *Conn) GetDeviceTime(ctx context.Context) (time.Time, error) {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseCurrTime, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeCurrTime, NotificationTypeErr),
 	)
 	defer done()
 
@@ -162,7 +162,7 @@ func (c *Conn) GetDeviceTime(ctx context.Context) (time.Time, error) {
 // GetBatteryVoltage returns the current battery voltage in millivolts.
 func (c *Conn) GetBatteryVoltage(ctx context.Context) (uint16, error) {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseBatteryVoltage, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeBatteryVoltage, NotificationTypeErr),
 	)
 	defer done()
 
@@ -193,7 +193,7 @@ func (c *Conn) SendTextMessage(
 	textType TextType,
 ) (*SentNotification, error) {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseSent, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeSent, NotificationTypeErr),
 	)
 	defer done()
 
@@ -224,7 +224,7 @@ func (c *Conn) SendChannelTextMessage(
 	textType TextType,
 ) error {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseOk, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeOk, NotificationTypeErr),
 	)
 	defer done()
 
@@ -253,7 +253,7 @@ func (c *Conn) GetTelemetry(
 	key *PublicKey,
 ) (*TelemetryResponseNotification, error) {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponsePushTelemetryResponse, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeTelemetryResponse, NotificationTypeErr),
 	)
 	defer done()
 
@@ -282,7 +282,7 @@ func (c *Conn) GetChannel(
 	idx uint8,
 ) (*ChannelInfo, error) {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseChannelInfo, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeChannelInfo, NotificationTypeErr),
 	)
 	defer done()
 
@@ -327,7 +327,7 @@ func (c *Conn) GetChannels(
 // SetChannel sets or updates a channel on the device.
 func (c *Conn) SetChannel(ctx context.Context, channel *ChannelInfo) error {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseOk, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeOk, NotificationTypeErr),
 	)
 	defer done()
 
@@ -363,7 +363,7 @@ func (c *Conn) DeleteChannel(ctx context.Context, idx uint8) error {
 // DeviceQuery queries the device information.
 func (c *Conn) DeviceQuery(ctx context.Context, appTargetVer byte) (*DeviceInfo, error) {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseDeviceInfo, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeDeviceInfo, NotificationTypeErr),
 	)
 	defer done()
 
@@ -404,7 +404,7 @@ func (c *Conn) Reboot(ctx context.Context) error {
 // SyncNextMessage synchronizes the next message from the device.
 func (c *Conn) SyncNextMessage(ctx context.Context) (Message, error) {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseContactMsgRecv, ResponseChannelMsgRecv, ResponseErr, ResponseNoMoreMessages),
+		c.tx.Subscribe(ctx, NotificationTypeContactMsgRecv, NotificationTypeChannelMsgRecv, NotificationTypeErr, NotificationTypeNoMoreMessages),
 	)
 	defer done()
 
@@ -434,7 +434,7 @@ func (c *Conn) SyncNextMessage(ctx context.Context) (Message, error) {
 // SendAdvert sends an advert to the device.
 func (c *Conn) SendAdvert(ctx context.Context, advertType SelfAdvertType) error {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseOk, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeOk, NotificationTypeErr),
 	)
 	defer done()
 
@@ -460,7 +460,7 @@ func (c *Conn) SendAdvert(ctx context.Context, advertType SelfAdvertType) error 
 // device's self contact is exported.
 func (c *Conn) ExportContact(ctx context.Context, key *PublicKey) ([]byte, error) {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseExportContact, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeExportContact, NotificationTypeErr),
 	)
 	defer done()
 
@@ -485,7 +485,7 @@ func (c *Conn) ExportContact(ctx context.Context, key *PublicKey) ([]byte, error
 // ImportContact imports a contact into the device.
 func (c *Conn) ImportContact(ctx context.Context, advertPacket []byte) error {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseOk, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeOk, NotificationTypeErr),
 	)
 	defer done()
 
@@ -510,7 +510,7 @@ func (c *Conn) ImportContact(ctx context.Context, advertPacket []byte) error {
 // ShareContact shares a contact with the device.
 func (c *Conn) ShareContact(ctx context.Context, key PublicKey) error {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseOk, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeOk, NotificationTypeErr),
 	)
 	defer done()
 
@@ -535,7 +535,7 @@ func (c *Conn) ShareContact(ctx context.Context, key PublicKey) error {
 // ExportPrivateKey exports the private key from the device.
 func (c *Conn) ExportPrivateKey(ctx context.Context) ([]byte, error) {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponsePrivateKey, ResponseDisabled, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypePrivateKey, NotificationTypeDisabled, NotificationTypeErr),
 	)
 	defer done()
 
@@ -563,7 +563,7 @@ func (c *Conn) ExportPrivateKey(ctx context.Context) ([]byte, error) {
 // ImportPrivateKey imports a private key into the device.
 func (c *Conn) ImportPrivateKey(ctx context.Context, privateKey []byte) error {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseOk, ResponseDisabled, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeOk, NotificationTypeDisabled, NotificationTypeErr),
 	)
 	defer done()
 
@@ -592,7 +592,7 @@ func (c *Conn) ImportPrivateKey(ctx context.Context, privateKey []byte) error {
 // SentResponse arrive, but we never get a PushStatusResponse.
 func (c *Conn) GetStatus(ctx context.Context, key PublicKey) (*StatusResponseNotification, error) {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponsePushStatusResponse, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeStatusResponse, NotificationTypeErr),
 	)
 	defer done()
 
@@ -618,7 +618,7 @@ func (c *Conn) GetStatus(ctx context.Context, key PublicKey) (*StatusResponseNot
 // SetAdvertLatLon sets the advert latitude and longitude.
 func (c *Conn) SetAdvertLatLon(ctx context.Context, lat float64, lon float64) error {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseOk, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeOk, NotificationTypeErr),
 	)
 	defer done()
 
@@ -643,7 +643,7 @@ func (c *Conn) SetAdvertLatLon(ctx context.Context, lat float64, lon float64) er
 // SetAdvertName sets the advert name.
 func (c *Conn) SetAdvertName(ctx context.Context, name string) error {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseOk, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeOk, NotificationTypeErr),
 	)
 	defer done()
 
@@ -669,7 +669,7 @@ func (c *Conn) SetAdvertName(ctx context.Context, name string) error {
 // SetDeviceTime sets the device time.
 func (c *Conn) SetDeviceTime(ctx context.Context, time time.Time) error {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseOk, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeOk, NotificationTypeErr),
 	)
 	defer done()
 
@@ -694,7 +694,7 @@ func (c *Conn) SetDeviceTime(ctx context.Context, time time.Time) error {
 // ResetPath resets the path for the given contact key.
 func (c *Conn) ResetPath(ctx context.Context, key PublicKey) error {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseOk, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeOk, NotificationTypeErr),
 	)
 	defer done()
 
@@ -719,7 +719,7 @@ func (c *Conn) ResetPath(ctx context.Context, key PublicKey) error {
 // GetSelfInfo returns the self information from the device.
 func (c *Conn) GetSelfInfo(ctx context.Context) (*SelfInfoNotification, error) {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseSelfInfo, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeSelfInfo, NotificationTypeErr),
 	)
 	defer done()
 
@@ -757,10 +757,10 @@ func (c *Conn) Sign(ctx context.Context, data []byte) ([]byte, error) {
 
 	next, done := iter.Pull2(
 		c.tx.Subscribe(ctx,
-			ResponseSignature,
-			ResponseSignStart,
-			ResponseOk,
-			ResponseErr,
+			NotificationTypeSignature,
+			NotificationTypeSignStart,
+			NotificationTypeOk,
+			NotificationTypeErr,
 		),
 	)
 	defer done()
@@ -833,7 +833,7 @@ func (c *Conn) SetRadioParams(
 	radioCr byte,
 ) error {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseOk, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeOk, NotificationTypeErr),
 	)
 	defer done()
 
@@ -868,7 +868,7 @@ func (c *Conn) SendBinaryRequest(
 	payload []byte,
 ) (*BinaryResponseNotification, error) {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseSent, ResponsePushBinaryResponse, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeSent, NotificationTypeBinaryResponse, NotificationTypeErr),
 	)
 	defer done()
 
@@ -908,7 +908,7 @@ func (c *Conn) SendBinaryRequest(
 // SetTXPower sets the TX power.
 func (c *Conn) SetTXPower(ctx context.Context, power byte) error {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseOk, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeOk, NotificationTypeErr),
 	)
 	defer done()
 
@@ -933,7 +933,7 @@ func (c *Conn) SetTXPower(ctx context.Context, power byte) error {
 // SetOtherParams sets the other parameters.
 func (c *Conn) SetOtherParams(ctx context.Context, manualAddContacts bool) error {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponseOk, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeOk, NotificationTypeErr),
 	)
 	defer done()
 
@@ -1033,7 +1033,7 @@ func (c *Conn) TracePath(ctx context.Context, path []byte) (*TraceData, error) {
 	}
 
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponsePushTraceData, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeTraceData, NotificationTypeErr),
 	)
 	defer done()
 
@@ -1061,7 +1061,7 @@ func (c *Conn) TracePath(ctx context.Context, path []byte) (*TraceData, error) {
 
 func (c *Conn) Login(ctx context.Context, key PublicKey, password string) error {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, ResponsePushLoginSuccess, ResponseErr),
+		c.tx.Subscribe(ctx, NotificationTypeLoginSuccess, NotificationTypeErr),
 	)
 	defer done()
 
@@ -1088,7 +1088,7 @@ func (c *Conn) Login(ctx context.Context, key PublicKey, password string) error 
 
 func (c *Conn) Notifications(
 	ctx context.Context,
-	codes ...ResponseCode,
+	codes ...NotificationCode,
 ) iter.Seq2[Notification, error] {
 	return c.tx.Subscribe(ctx, codes...)
 }

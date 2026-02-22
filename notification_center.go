@@ -33,16 +33,16 @@ func (s *subscription) publish(notification Notification, error error) {
 
 type NotificationCenter struct {
 	lck           sync.RWMutex
-	subscriptions map[ResponseCode][]*subscription
+	subscriptions map[NotificationCode][]*subscription
 }
 
 func NewNotificationCenter() *NotificationCenter {
 	return &NotificationCenter{
-		subscriptions: make(map[ResponseCode][]*subscription),
+		subscriptions: make(map[NotificationCode][]*subscription),
 	}
 }
 
-func (e *NotificationCenter) register(codes []ResponseCode, s *subscription) func() {
+func (e *NotificationCenter) register(codes []NotificationCode, s *subscription) func() {
 	e.lck.Lock()
 	defer e.lck.Unlock()
 
@@ -66,7 +66,7 @@ func (e *NotificationCenter) register(codes []ResponseCode, s *subscription) fun
 
 func (e *NotificationCenter) Subscribe(
 	ctx context.Context,
-	codes ...ResponseCode,
+	codes ...NotificationCode,
 ) iter.Seq2[Notification, error] {
 	s := &subscription{
 		ch: make(chan *notificationData),
@@ -95,7 +95,7 @@ func (e *NotificationCenter) Subscribe(
 	}
 }
 
-func (e *NotificationCenter) Publish(code ResponseCode, data []byte) {
+func (e *NotificationCenter) Publish(code NotificationCode, data []byte) {
 	e.lck.RLock()
 	defer e.lck.RUnlock()
 
@@ -120,5 +120,5 @@ func (e *NotificationCenter) Shutdown() {
 		}
 	}
 
-	e.subscriptions = make(map[ResponseCode][]*subscription)
+	e.subscriptions = make(map[NotificationCode][]*subscription)
 }
