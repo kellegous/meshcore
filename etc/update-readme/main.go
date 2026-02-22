@@ -257,6 +257,7 @@ var sections = Sections{
 			},
 			{
 				Title: "Push TraceData",
+				Done:  true,
 			},
 			{
 				Title: "Push NewAdvert",
@@ -264,6 +265,7 @@ var sections = Sections{
 			},
 			{
 				Title: "Push TelemetryResponse",
+				Done:  true,
 			},
 			{
 				Title: "Push BinaryResponse",

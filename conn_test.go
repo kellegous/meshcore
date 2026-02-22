@@ -425,7 +425,7 @@ func TestSendTextMessage(t *testing.T) {
 
 func TestGetTelemetry(t *testing.T) {
 	key := fakePublicKey(42)
-	expected := &TelemetryResponseNotification{
+	expected := &Telemetry{
 		PubKeyPrefix:  [6]byte{42, 0, 0, 0, 0, 0},
 		LPPSensorData: []byte{1, 2, 3},
 	}
@@ -452,7 +452,7 @@ func TestGetTelemetry(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	controller.Notify(NotificationTypeTelemetryResponse, BytesFrom(
+	controller.Notify(NotificationTypeTelemetry, BytesFrom(
 		Byte(0),
 		Bytes(key.Prefix(6)...),
 		Bytes(1, 2, 3),
@@ -1778,8 +1778,8 @@ func TestTracePath(t *testing.T) { // TODO: fix this test
 		Flags:      0,
 		AuthCode:   0,
 		PathHashes: path,
-		PathSnrs:   path,
-		LastSnr:    10.0,
+		PathSNRs:   path,
+		LastSNR:    10.0,
 	}
 
 	var tag []byte
@@ -1814,8 +1814,8 @@ func TestTracePath(t *testing.T) { // TODO: fix this test
 			Uint32(expected.Tag, binary.LittleEndian),
 			Uint32(expected.AuthCode, binary.LittleEndian),
 			Bytes(expected.PathHashes...),
-			Bytes(expected.PathSnrs...),
-			Byte(byte(expected.LastSnr*4)),
+			Bytes(expected.PathSNRs...),
+			Byte(byte(expected.LastSNR*4)),
 		))
 
 		controller.Wait()
@@ -1879,8 +1879,8 @@ func TestTracePath(t *testing.T) { // TODO: fix this test
 			Uint32(expected.Tag+1, binary.LittleEndian), // errant tag
 			Uint32(expected.AuthCode, binary.LittleEndian),
 			Bytes(expected.PathHashes...),
-			Bytes(expected.PathSnrs...),
-			Byte(byte(expected.LastSnr*4)),
+			Bytes(expected.PathSNRs...),
+			Byte(byte(expected.LastSNR*4)),
 		))
 
 		controller.Notify(NotificationTypeTraceData, BytesFrom(
@@ -1890,8 +1890,8 @@ func TestTracePath(t *testing.T) { // TODO: fix this test
 			Uint32(expected.Tag, binary.LittleEndian),
 			Uint32(expected.AuthCode, binary.LittleEndian),
 			Bytes(expected.PathHashes...),
-			Bytes(expected.PathSnrs...),
-			Byte(byte(expected.LastSnr*4)),
+			Bytes(expected.PathSNRs...),
+			Byte(byte(expected.LastSNR*4)),
 		))
 
 		controller.Wait()
@@ -2161,6 +2161,61 @@ func TestPushNotifications(t *testing.T) {
 					Byte(2),
 					Byte(byte(expected.LastRSSI)),
 					Bytes(expected.Payload...),
+				), expected
+			},
+		},
+		{
+			Name: "TelemetryResponse",
+			Code: NotificationTypeTelemetry,
+			Data: func() ([]byte, Notification) {
+				pubKey := fakePublicKey(42)
+				expected := &TelemetryNotification{
+					Telemetry: Telemetry{
+						PubKeyPrefix: func() [6]byte {
+							var buf [6]byte
+							copy(buf[:], pubKey.Prefix(6))
+							return buf
+						}(),
+						LPPSensorData: fakeBytes(10, func(i int) byte {
+							return byte(i + 1)
+						}),
+					},
+				}
+				return BytesFrom(
+					Byte(0),
+					Bytes(expected.Telemetry.PubKeyPrefix[:]...),
+					Bytes(expected.Telemetry.LPPSensorData...),
+				), expected
+			},
+		},
+
+		{
+			Name: "TraceData",
+			Code: NotificationTypeTraceData,
+			Data: func() ([]byte, Notification) {
+				path := fakeBytes(10, func(i int) byte {
+					return byte(i + 1)
+				})
+				expected := &TraceDataNotification{
+					TraceData: TraceData{
+						PathLen:    10,
+						Flags:      0,
+						Tag:        1234567890,
+						AuthCode:   0,
+						PathHashes: path,
+						PathSNRs:   path,
+						LastSNR:    10.0,
+					},
+				}
+				return BytesFrom(
+					Byte(0),
+					Bytes(expected.TraceData.PathLen),
+					Bytes(expected.TraceData.Flags),
+					Uint32(expected.TraceData.Tag, binary.LittleEndian),
+					Uint32(expected.TraceData.AuthCode, binary.LittleEndian),
+					Bytes(expected.TraceData.PathHashes...),
+					Bytes(expected.TraceData.PathSNRs...),
+					Byte(byte(expected.TraceData.LastSNR*4)),
 				), expected
 			},
 		},

@@ -5,10 +5,10 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
 
 ## Status
 
-**In Progress**
+**Complete**
 
 ```
-|████████████████████████████████████████████████  | 96%
+|██████████████████████████████████████████████████| 100%
 ```
 
 ## TODO:
@@ -21,7 +21,7 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
    - [x] USB/Serial
  
 
- - [ ] meshcore.Conn
+ - [x] meshcore.Conn
  
    - [x] Push Advert
  
@@ -45,9 +45,9 @@ A Go module for interacting with a [MeshCore](https://github.com/meshcore-dev/Me
  
    - [x] Push StatusResponse
  
-   - [ ] Push TelemetryResponse
+   - [x] Push TelemetryResponse
  
-   - [ ] Push TraceData
+   - [x] Push TraceData
  
    - [x] addOrUpdateContact
  

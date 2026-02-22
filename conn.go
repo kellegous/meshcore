@@ -251,9 +251,9 @@ func (c *Conn) SendChannelTextMessage(
 func (c *Conn) GetTelemetry(
 	ctx context.Context,
 	key *PublicKey,
-) (*TelemetryResponseNotification, error) {
+) (*Telemetry, error) {
 	next, done := iter.Pull2(
-		c.tx.Subscribe(ctx, NotificationTypeTelemetryResponse, NotificationTypeErr),
+		c.tx.Subscribe(ctx, NotificationTypeTelemetry, NotificationTypeErr),
 	)
 	defer done()
 
@@ -267,8 +267,8 @@ func (c *Conn) GetTelemetry(
 	}
 
 	switch t := res.(type) {
-	case *TelemetryResponseNotification:
-		return t, nil
+	case *TelemetryNotification:
+		return &t.Telemetry, nil
 	case *ErrNotification:
 		return nil, poop.Chain(t.Error())
 	}

@@ -166,13 +166,16 @@ func (n *Neighbour) readFrom(r io.Reader, pubKeyPrefixLength byte) error {
 }
 
 type TraceData struct {
+	// TODO(kellegous): PathLen should not be a field, it should just
+	// adjust the path-based slices accordingly.
 	PathLen    uint8
 	Flags      uint8
 	Tag        uint32
 	AuthCode   uint32
 	PathHashes []byte
-	PathSnrs   []byte
-	LastSnr    float64
+	// TODO(kellegous): These should be float64 and be divided by 4.
+	PathSNRs []byte
+	LastSNR  float64
 }
 
 func (t *TraceData) readFrom(r io.Reader) error {
@@ -193,18 +196,18 @@ func (t *TraceData) readFrom(r io.Reader) error {
 		return poop.Chain(err)
 	}
 	t.PathHashes = make([]byte, t.PathLen)
-	t.PathSnrs = make([]byte, t.PathLen)
+	t.PathSNRs = make([]byte, t.PathLen)
 	if _, err := io.ReadFull(r, t.PathHashes); err != nil {
 		return poop.Chain(err)
 	}
-	if _, err := io.ReadFull(r, t.PathSnrs); err != nil {
+	if _, err := io.ReadFull(r, t.PathSNRs); err != nil {
 		return poop.Chain(err)
 	}
 	var lastSnr int8
 	if err := binary.Read(r, binary.LittleEndian, &lastSnr); err != nil {
 		return poop.Chain(err)
 	}
-	t.LastSnr = float64(lastSnr) / 4
+	t.LastSNR = float64(lastSnr) / 4
 	return nil
 }
 
@@ -246,6 +249,27 @@ func (b *BinaryResponse) readFrom(r io.Reader) error {
 	b.ResponseData, err = io.ReadAll(r)
 	if err != nil {
 		return poop.Chain(poop.Chain(err))
+	}
+	return nil
+}
+
+type Telemetry struct {
+	PubKeyPrefix  [6]byte
+	LPPSensorData []byte
+}
+
+func (t *Telemetry) readFrom(r io.Reader) error {
+	var reserved byte
+	if err := binary.Read(r, binary.LittleEndian, &reserved); err != nil {
+		return poop.Chain(err)
+	}
+	if _, err := io.ReadFull(r, t.PubKeyPrefix[:]); err != nil {
+		return poop.Chain(err)
+	}
+	var err error
+	t.LPPSensorData, err = io.ReadAll(r)
+	if err != nil {
+		return poop.Chain(err)
 	}
 	return nil
 }
