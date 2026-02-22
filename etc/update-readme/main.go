@@ -99,10 +99,68 @@ func codeForRef(dir, ref string) (string, error) {
 		if !ok || fn.Name.Name != funcName {
 			continue
 		}
-		return extractFuncBody(src, fset, fn)
+		body, err := extractFuncBody(src, fset, fn)
+		if err != nil {
+			return "", poop.Chain(err)
+		}
+		imports := importsForFunc(file, fn)
+		if len(imports) == 0 || body == "" {
+			return body, nil
+		}
+		return formatImports(imports) + "\n\n" + body, nil
 	}
 
 	return "", poop.Newf("function %q not found in %s", funcName, filePath)
+}
+
+// importsForFunc returns the import specs from file that are referenced in fn's body.
+// It walks the body AST looking for selector expressions (pkg.Name) and matches
+// the package name against the file's imports.
+func importsForFunc(file *ast.File, fn *ast.FuncDecl) []*ast.ImportSpec {
+	used := make(map[string]bool)
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		sel, ok := n.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		ident, ok := sel.X.(*ast.Ident)
+		if !ok {
+			return true
+		}
+		used[ident.Name] = true
+		return true
+	})
+
+	var result []*ast.ImportSpec
+	for _, spec := range file.Imports {
+		localName := ""
+		if spec.Name != nil {
+			localName = spec.Name.Name
+		} else {
+			path := strings.Trim(spec.Path.Value, `"`)
+			localName = filepath.Base(path)
+		}
+		if used[localName] {
+			result = append(result, spec)
+		}
+	}
+	return result
+}
+
+// formatImports formats a slice of import specs as a grouped import block.
+func formatImports(specs []*ast.ImportSpec) string {
+	var lines []string
+	lines = append(lines, "import (")
+	for _, spec := range specs {
+		line := "\t"
+		if spec.Name != nil {
+			line += spec.Name.Name + " "
+		}
+		line += spec.Path.Value
+		lines = append(lines, line)
+	}
+	lines = append(lines, ")")
+	return strings.Join(lines, "\n")
 }
 
 // extractFuncBody extracts and formats the body of a function declaration.

@@ -10,9 +10,9 @@ import (
 )
 
 func ExampleConn_SendTextMessage() {
+	// Send a text message to a contact.
 	ctx := context.Background()
 
-	// Send a text message to a contact.
 	conn, err := serial.Connect(context.Background(), "/dev/cu.usbserial-0001")
 	if err != nil {
 		log.Fatal(err)
@@ -37,5 +37,6 @@ func ExampleConn_SendTextMessage() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	fmt.Printf("sent message: %+v\n", sr)
 }

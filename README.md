@@ -15,9 +15,17 @@ go get github.com/kellegous/meshcore@latest
 [example]: # "example_test.go:ExampleConn_SendTextMessage"
 
 ```go
-ctx := context.Background()
+import (
+	"context"
+	"fmt"
+	"log"
+	"github.com/kellegous/meshcore"
+	"github.com/kellegous/meshcore/serial"
+)
 
 // Send a text message to a contact.
+ctx := context.Background()
+
 conn, err := serial.Connect(context.Background(), "/dev/cu.usbserial-0001")
 if err != nil {
 	log.Fatal(err)
@@ -42,6 +50,7 @@ sr, err := conn.SendTextMessage(
 if err != nil {
 	log.Fatal(err)
 }
+
 fmt.Printf("sent message: %+v\n", sr)
 ```
 
@@ -50,6 +59,13 @@ fmt.Printf("sent message: %+v\n", sr)
 [example]: # "bluetooth/example_test.go:ExampleClient_LookupDevice"
 
 ```go
+import (
+	"context"
+	"log"
+	meshcore_bluetooth "github.com/kellegous/meshcore/bluetooth"
+	"tinygo.org/x/bluetooth"
+)
+
 client, err := meshcore_bluetooth.NewClient(bluetooth.DefaultAdapter)
 if err != nil {
 	log.Fatal(err)
@@ -72,6 +88,14 @@ defer conn.Disconnect()
 [example]: # "bluetooth/example_test.go:ExampleClient_DiscoverDevices"
 
 ```go
+import (
+	"context"
+	"log"
+	"time"
+	meshcore_bluetooth "github.com/kellegous/meshcore/bluetooth"
+	"tinygo.org/x/bluetooth"
+)
+
 client, err := meshcore_bluetooth.NewClient(bluetooth.DefaultAdapter)
 if err != nil {
 	log.Fatal(err)
@@ -98,6 +122,7 @@ if err != nil {
 }
 defer conn.Disconnect()
 ```
+
 ## Authors
 
 - [@kellegous](https://github.com/kellegous)
