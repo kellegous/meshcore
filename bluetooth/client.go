@@ -114,7 +114,7 @@ func (c *Client) Connect(
 
 	frDevice.EnableNotifications(func(data []byte) {
 		code := meshcore.NotificationCode(data[0])
-		if nf := options.onNotification; nf != nil {
+		if nf := options.onRecv; nf != nil {
 			nf(code, data[1:])
 		}
 		notificationCenter.Publish(code, data[1:])
@@ -124,5 +124,6 @@ func (c *Client) Connect(
 		device:             device,
 		toDevice:           toDevice,
 		NotificationCenter: notificationCenter,
+		opts:               options,
 	}), nil
 }

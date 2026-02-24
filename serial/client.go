@@ -40,10 +40,10 @@ func Connect(
 	transport := &tx{
 		port:               port,
 		NotificationCenter: notificationCenter,
+		opts:               options,
 	}
 
-	// TODO(kellegous): This needs to become a part of the
-	// transport interface.
+	// TODO(kellegous): What to do with these errors?
 	onRecvError := func(err error) {
 		// suppress errors if the transport is disconnected
 		if transport.isDisconnected.Load() {
@@ -77,7 +77,7 @@ func Connect(
 			}
 
 			code := meshcore.NotificationCode(data[0])
-			if nf := options.onNotification; nf != nil {
+			if nf := options.onRecv; nf != nil {
 				nf(code, data[1:])
 			}
 

@@ -14,6 +14,7 @@ type tx struct {
 	port           serial.Port
 	isDisconnected atomic.Bool
 	*meshcore.NotificationCenter
+	opts *ConnectOptions
 }
 
 var _ meshcore.Transport = (*tx)(nil)
@@ -23,6 +24,11 @@ func (t *tx) Write(p []byte) (int, error) {
 	buf.WriteByte(outgoingFrameType)
 	binary.Write(&buf, binary.LittleEndian, uint16(len(p)))
 	buf.Write(p)
+
+	if nf := t.opts.onSend; nf != nil && len(p) > 0 {
+		nf(meshcore.CommandCode(p[0]), p[1:])
+	}
+
 	n, err := t.port.Write(buf.Bytes())
 	if err != nil {
 		return 0, poop.Chain(err)

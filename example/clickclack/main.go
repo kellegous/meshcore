@@ -15,6 +15,10 @@ import (
 	"tinygo.org/x/bluetooth"
 )
 
+type Flags struct {
+	Verbose bool
+}
+
 func main() {
 	if err := run(context.Background()); err != nil {
 		poop.HitFan(err)
@@ -22,13 +26,20 @@ func main() {
 }
 
 func run(ctx context.Context) error {
+	var flags Flags
+	flag.BoolVar(&flags.Verbose, "verbose", false, "verbose output")
+
 	flag.Parse()
 	if flag.NArg() != 2 {
 		fmt.Fprintf(os.Stderr, "usage: %s <address> <address>\n", os.Args[0])
 		os.Exit(1)
 	}
 
-	click, err := connect(ctx, flag.Arg(0))
+	click, err := connect(
+		ctx, flag.Arg(0),
+		onSend("click", flags.Verbose),
+		onRecv("click", flags.Verbose),
+	)
 	if err != nil {
 		return poop.Chain(err)
 	}
@@ -36,7 +47,11 @@ func run(ctx context.Context) error {
 
 	fmt.Printf("click: %s\n", flag.Arg(0))
 
-	clack, err := connect(ctx, flag.Arg(1))
+	clack, err := connect(
+		ctx, flag.Arg(1),
+		onSend("clack", flags.Verbose),
+		onRecv("clack", flags.Verbose),
+	)
 	if err != nil {
 		return poop.Chain(err)
 	}
@@ -97,7 +112,30 @@ func run(ctx context.Context) error {
 	return nil
 }
 
-func connect(ctx context.Context, name string) (*meshcore.Conn, error) {
+func onSend(name string, verbose bool) func(code meshcore.CommandCode, data []byte) {
+	if !verbose {
+		return func(code meshcore.CommandCode, data []byte) {}
+	}
+	return func(code meshcore.CommandCode, data []byte) {
+		fmt.Printf("%s: <send: %v>\n", name, code)
+	}
+}
+
+func onRecv(name string, verbose bool) func(code meshcore.NotificationCode, data []byte) {
+	if !verbose {
+		return func(code meshcore.NotificationCode, data []byte) {}
+	}
+	return func(code meshcore.NotificationCode, data []byte) {
+		fmt.Printf("%s: <recv: %v>\n", name, code)
+	}
+}
+
+func connect(
+	ctx context.Context,
+	name string,
+	onSend func(code meshcore.CommandCode, data []byte),
+	onRecv func(code meshcore.NotificationCode, data []byte),
+) (*meshcore.Conn, error) {
 	tx, addr, ok := strings.Cut(name, ":")
 	if !ok {
 		return nil, poop.Newf("invalid name: %s", name)
@@ -113,14 +151,19 @@ func connect(ctx context.Context, name string) (*meshcore.Conn, error) {
 		if err != nil {
 			return nil, poop.Chain(err)
 		}
-		return client.Connect(ctx, device.Address,
-			meshcore_bluetooth.WithNotificationCallback(func(code meshcore.NotificationCode, data []byte) {
-				fmt.Printf("<notification: %v>\n", code)
-			}))
+		return client.Connect(
+			ctx,
+			device.Address,
+			meshcore_bluetooth.OnRecv(onRecv),
+			meshcore_bluetooth.OnSend(onSend),
+		)
 	case "usb", "serial":
-		return meshcore_serial.Connect(ctx, addr, meshcore_serial.WithNotificationCallback(func(code meshcore.NotificationCode, data []byte) {
-			fmt.Printf("<notification: %v>\n", code)
-		}))
+		return meshcore_serial.Connect(
+			ctx,
+			addr,
+			meshcore_serial.OnRecv(onRecv),
+			meshcore_serial.OnSend(onSend),
+		)
 	}
 
 	return nil, poop.Newf("invalid transport: %s", tx)
