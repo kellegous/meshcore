@@ -12,6 +12,10 @@ type PublicKey struct {
 	key [32]byte
 }
 
+func (k *PublicKey) String() string {
+	return hex.EncodeToString(k.key[:])
+}
+
 func (k *PublicKey) readFrom(r io.Reader) error {
 	if _, err := io.ReadFull(r, k.key[:]); err != nil {
 		return poop.Chain(err)

@@ -50,6 +50,49 @@ const (
 	CommandSendBinaryReq     CommandCode = 50
 )
 
+var commandCodeText = map[CommandCode]string{
+	CommandAppStart:          "AppStart",
+	CommandSendTxtMsg:        "SendTxtMsg",
+	CommandSendChannelTxtMsg: "SendChannelTxtMsg",
+	CommandGetContacts:       "GetContacts",
+	CommandGetDeviceTime:     "GetDeviceTime",
+	CommandSetDeviceTime:     "SetDeviceTime",
+	CommandSendSelfAdvert:    "SendSelfAdvert",
+	CommandSetAdvertName:     "SetAdvertName",
+	CommandAddUpdateContact:  "AddUpdateContact",
+	CommandSyncNextMessage:   "SyncNextMessage",
+	CommandSetRadioParams:    "SetRadioParams",
+	CommandSetTxPower:        "SetTxPower",
+	CommandResetPath:         "ResetPath",
+	CommandSetAdvertLatLon:   "SetAdvertLatLon",
+	CommandRemoveContact:     "RemoveContact",
+	CommandShareContact:      "ShareContact",
+	CommandExportContact:     "ExportContact",
+	CommandImportContact:     "ImportContact",
+	CommandReboot:            "Reboot",
+	CommandGetBatteryVoltage: "GetBatteryVoltage",
+	CommandSetTuningParams:   "SetTuningParams",
+	CommandDeviceQuery:       "DeviceQuery",
+	CommandExportPrivateKey:  "ExportPrivateKey",
+	CommandImportPrivateKey:  "ImportPrivateKey",
+	CommandSendRawData:       "SendRawData",
+	CommandSendLogin:         "SendLogin",
+	CommandSendStatusReq:     "SendStatusReq",
+	CommandGetChannel:        "GetChannel",
+	CommandSetChannel:        "SetChannel",
+	CommandSignStart:         "SignStart",
+	CommandSignData:          "SignData",
+	CommandSignFinish:        "SignFinish",
+	CommandSendTracePath:     "SendTracePath",
+	CommandSetOtherParams:    "SetOtherParams",
+	CommandSendTelemetryReq:  "SendTelemetryReq",
+	CommandSendBinaryReq:     "SendBinaryReq",
+}
+
+func (c CommandCode) String() string {
+	return commandCodeText[c]
+}
+
 type TextType byte
 
 const (

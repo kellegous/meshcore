@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/kellegous/meshcore"
 	meshcore_bluetooth "github.com/kellegous/meshcore/bluetooth"
 	meshcore_serial "github.com/kellegous/meshcore/serial"
@@ -17,6 +18,13 @@ import (
 
 type Flags struct {
 	Verbose bool
+	Color   bool
+}
+
+type Actor struct {
+	Name string
+	*meshcore.Conn
+	Printf func(format string, a ...any) (int, error)
 }
 
 func main() {
@@ -25,9 +33,20 @@ func main() {
 	}
 }
 
+func getPrintf(
+	useColor bool,
+	c *color.Color,
+) func(format string, a ...any) (int, error) {
+	if !useColor {
+		return fmt.Printf
+	}
+	return c.Printf
+}
+
 func run(ctx context.Context) error {
 	var flags Flags
 	flag.BoolVar(&flags.Verbose, "verbose", false, "verbose output")
+	flag.BoolVar(&flags.Color, "color", true, "color output")
 
 	flag.Parse()
 	if flag.NArg() != 2 {
@@ -35,8 +54,13 @@ func run(ctx context.Context) error {
 		os.Exit(1)
 	}
 
-	click, err := connect(
-		ctx, flag.Arg(0),
+	narrator := getPrintf(flags.Color, color.New(color.FgGreen))
+
+	click, err := newActor(
+		ctx,
+		"click",
+		flag.Arg(0),
+		getPrintf(flags.Color, color.New(color.FgCyan)),
 		onSend("click", flags.Verbose),
 		onRecv("click", flags.Verbose),
 	)
@@ -45,10 +69,13 @@ func run(ctx context.Context) error {
 	}
 	defer click.Disconnect()
 
-	fmt.Printf("click: %s\n", flag.Arg(0))
+	click.Printf("click: %s\n", flag.Arg(0))
 
-	clack, err := connect(
-		ctx, flag.Arg(1),
+	clack, err := newActor(
+		ctx,
+		"clack",
+		flag.Arg(1),
+		getPrintf(flags.Color, color.New(color.FgYellow)),
 		onSend("clack", flags.Verbose),
 		onRecv("clack", flags.Verbose),
 	)
@@ -57,31 +84,43 @@ func run(ctx context.Context) error {
 	}
 	defer clack.Disconnect()
 
-	fmt.Printf("clack: %s\n", flag.Arg(1))
+	clack.Printf("clack: %s\n", flag.Arg(1))
 
 	clickInfo, err := click.GetSelfInfo(ctx)
 	if err != nil {
 		return poop.Chain(err)
 	}
-	fmt.Printf("click info: %+v\n", clickInfo)
+	click.Printf(
+		"click: self info PublicKey=%s, AdvertName=%s, AdvertLat=%0.3f, AdvertLon=%0.3f\n",
+		clickInfo.PublicKey.String(),
+		clickInfo.Name,
+		clickInfo.AdvLat,
+		clickInfo.AdvLon,
+	)
 
 	clackInfo, err := clack.GetSelfInfo(ctx)
 	if err != nil {
 		return poop.Chain(err)
 	}
-	fmt.Printf("clack info: %+v\n", clackInfo)
+	clack.Printf(
+		"clack: self info PublicKey=%s, AdvertName=%s, AdvertLat=%0.3f, AdvertLon=%0.3f\n",
+		clackInfo.PublicKey.String(),
+		clackInfo.Name,
+		clackInfo.AdvLat,
+		clackInfo.AdvLon,
+	)
 
 	// reset contacts
 	if err := func() error {
-		fmt.Printf("resetting contacts\n")
-		defer fmt.Printf("contacts reset\n")
+		narrator("resetting contacts\n")
+		defer narrator("contacts reset\n")
 
 		g, ctx := errgroup.WithContext(ctx)
 		g.Go(func() error {
-			return resetContacts(ctx, click)
+			return resetContacts(ctx, click.Conn)
 		})
 		g.Go(func() error {
-			return resetContacts(ctx, clack)
+			return resetContacts(ctx, clack.Conn)
 		})
 		if err := g.Wait(); err != nil {
 			return poop.Chain(err)
@@ -96,11 +135,11 @@ func run(ctx context.Context) error {
 		fmt.Printf("exchanging contacts\n")
 		defer fmt.Printf("contacts exchanged\n")
 
-		if err := discover(ctx, click, clack); err != nil {
+		if err := discover(ctx, click.Conn, clack.Conn); err != nil {
 			return poop.Chain(err)
 		}
 
-		if err := discover(ctx, clack, click); err != nil {
+		if err := discover(ctx, clack.Conn, click.Conn); err != nil {
 			return poop.Chain(err)
 		}
 
@@ -128,6 +167,25 @@ func onRecv(name string, verbose bool) func(code meshcore.NotificationCode, data
 	return func(code meshcore.NotificationCode, data []byte) {
 		fmt.Printf("%s: <recv: %v>\n", name, code)
 	}
+}
+
+func newActor(
+	ctx context.Context,
+	name string,
+	addr string,
+	printf func(format string, a ...any) (int, error),
+	onSend func(code meshcore.CommandCode, data []byte),
+	onRecv func(code meshcore.NotificationCode, data []byte),
+) (*Actor, error) {
+	conn, err := connect(ctx, addr, onSend, onRecv)
+	if err != nil {
+		return nil, poop.Chain(err)
+	}
+	return &Actor{
+		Name:   name,
+		Conn:   conn,
+		Printf: printf,
+	}, nil
 }
 
 func connect(

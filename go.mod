@@ -3,6 +3,7 @@ module github.com/kellegous/meshcore
 go 1.25.6
 
 require (
+	github.com/fatih/color v1.18.0
 	github.com/kellegous/poop v0.7.0
 	go.bug.st/serial v1.6.4
 	golang.org/x/sync v0.10.0
@@ -11,7 +12,6 @@ require (
 
 require (
 	github.com/creack/goselect v0.1.2 // indirect
-	github.com/fatih/color v1.18.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
