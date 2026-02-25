@@ -267,18 +267,7 @@ func readEndOfContactsNotification(_ []byte) (*EndOfContactsNotification, error)
 }
 
 type SelfInfoNotification struct {
-	Type              byte
-	TxPower           byte
-	MaxTxPower        byte
-	PublicKey         PublicKey
-	AdvLat            float64
-	AdvLon            float64
-	ManualAddContacts byte
-	RadioFreq         float64
-	RadioBw           float64
-	RadioSf           byte
-	RadioCr           byte
-	Name              string
+	SelfInfo SelfInfo
 }
 
 func (e *SelfInfoNotification) NotificationCode() NotificationCode {
@@ -288,47 +277,7 @@ func (e *SelfInfoNotification) NotificationCode() NotificationCode {
 func readSelfInfoNotification(data []byte) (*SelfInfoNotification, error) {
 	var n SelfInfoNotification
 	r := bytes.NewReader(data)
-	if err := binary.Read(r, binary.LittleEndian, &n.Type); err != nil {
-		return nil, poop.Chain(err)
-	}
-	if err := binary.Read(r, binary.LittleEndian, &n.TxPower); err != nil {
-		return nil, poop.Chain(err)
-	}
-	if err := binary.Read(r, binary.LittleEndian, &n.MaxTxPower); err != nil {
-		return nil, poop.Chain(err)
-	}
-	if err := n.PublicKey.readFrom(r); err != nil {
-		return nil, poop.Chain(err)
-	}
-	var err error
-	n.AdvLat, n.AdvLon, err = readLatLon(r)
-	if err != nil {
-		return nil, poop.Chain(err)
-	}
-	var reserved [3]byte
-	if _, err := io.ReadFull(r, reserved[:]); err != nil {
-		return nil, poop.Chain(err)
-	}
-	if err := binary.Read(r, binary.LittleEndian, &n.ManualAddContacts); err != nil {
-		return nil, poop.Chain(err)
-	}
-	var freq, bw uint32
-	if err := binary.Read(r, binary.LittleEndian, &freq); err != nil {
-		return nil, poop.Chain(err)
-	}
-	n.RadioFreq = float64(freq) / 1000
-	if err := binary.Read(r, binary.LittleEndian, &bw); err != nil {
-		return nil, poop.Chain(err)
-	}
-	n.RadioBw = float64(bw) / 1000
-	if err := binary.Read(r, binary.LittleEndian, &n.RadioSf); err != nil {
-		return nil, poop.Chain(err)
-	}
-	if err := binary.Read(r, binary.LittleEndian, &n.RadioCr); err != nil {
-		return nil, poop.Chain(err)
-	}
-	n.Name, err = readString(r)
-	if err != nil {
+	if err := n.SelfInfo.readFrom(r); err != nil {
 		return nil, poop.Chain(err)
 	}
 	return &n, nil

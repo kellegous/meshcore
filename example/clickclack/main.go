@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"os"
@@ -16,6 +17,12 @@ import (
 	"tinygo.org/x/bluetooth"
 )
 
+type Printer func(format string, a ...any) (int, error)
+
+func (p Printer) Printf(format string, a ...any) (int, error) {
+	return p(format, a...)
+}
+
 type Flags struct {
 	Verbose bool
 	Color   bool
@@ -24,7 +31,7 @@ type Flags struct {
 type Actor struct {
 	Name string
 	*meshcore.Conn
-	Printf func(format string, a ...any) (int, error)
+	Printer
 }
 
 func main() {
@@ -36,7 +43,7 @@ func main() {
 func getPrintf(
 	useColor bool,
 	c *color.Color,
-) func(format string, a ...any) (int, error) {
+) Printer {
 	if !useColor {
 		return fmt.Printf
 	}
@@ -112,8 +119,7 @@ func run(ctx context.Context) error {
 
 	// reset contacts
 	if err := func() error {
-		narrator("resetting contacts\n")
-		defer narrator("contacts reset\n")
+		narrator.Printf("resetting contacts\n")
 
 		g, ctx := errgroup.WithContext(ctx)
 		g.Go(func() error {
@@ -135,11 +141,11 @@ func run(ctx context.Context) error {
 		fmt.Printf("exchanging contacts\n")
 		defer fmt.Printf("contacts exchanged\n")
 
-		if err := discover(ctx, click.Conn, clack.Conn); err != nil {
+		if err := discover(ctx, click, clack); err != nil {
 			return poop.Chain(err)
 		}
 
-		if err := discover(ctx, clack.Conn, click.Conn); err != nil {
+		if err := discover(ctx, clack, click); err != nil {
 			return poop.Chain(err)
 		}
 
@@ -173,7 +179,7 @@ func newActor(
 	ctx context.Context,
 	name string,
 	addr string,
-	printf func(format string, a ...any) (int, error),
+	printer Printer,
 	onSend func(code meshcore.CommandCode, data []byte),
 	onRecv func(code meshcore.NotificationCode, data []byte),
 ) (*Actor, error) {
@@ -182,9 +188,9 @@ func newActor(
 		return nil, poop.Chain(err)
 	}
 	return &Actor{
-		Name:   name,
-		Conn:   conn,
-		Printf: printf,
+		Name:    name,
+		Conn:    conn,
+		Printer: printer,
 	}, nil
 }
 
@@ -247,21 +253,32 @@ func resetContacts(
 
 func discover(
 	ctx context.Context,
-	advertiser *meshcore.Conn,
-	listener *meshcore.Conn,
+	advertiser *Actor,
+	listener *Actor,
 ) error {
 	g, bgCtx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		for advert, err := range listener.Notifications(bgCtx, meshcore.NotificationTypeAdvert) {
+		for notif, err := range listener.Notifications(bgCtx, meshcore.NotificationTypeAdvert) {
 			if err != nil {
 				return poop.Chain(err)
 			}
-			fmt.Printf("advert: %v\n", advert)
+
+			advert, ok := notif.(*meshcore.AdvertNotification)
+			if !ok {
+				return poop.Newf("unexpected advert notification: %T", advert)
+			}
+
+			listener.Printf(
+				"%s: received advert for %s\n",
+				listener.Name,
+				hex.EncodeToString(advert.PublicKey.Prefix(6)),
+			)
 			break
 		}
 		return nil
 	})
 
+	advertiser.Printf("%s: sending advert\n", advertiser.Name)
 	if err := advertiser.SendAdvert(ctx, meshcore.SelfAdvertTypeFlood); err != nil {
 		return poop.Chain(err)
 	}

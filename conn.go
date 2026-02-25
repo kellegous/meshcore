@@ -718,7 +718,7 @@ func (c *Conn) ResetPath(ctx context.Context, key PublicKey) error {
 }
 
 // GetSelfInfo returns the self information from the device.
-func (c *Conn) GetSelfInfo(ctx context.Context) (*SelfInfoNotification, error) {
+func (c *Conn) GetSelfInfo(ctx context.Context) (*SelfInfo, error) {
 	next, done := iter.Pull2(
 		c.tx.Subscribe(ctx, NotificationTypeSelfInfo, NotificationTypeErr),
 	)
@@ -734,7 +734,7 @@ func (c *Conn) GetSelfInfo(ctx context.Context) (*SelfInfoNotification, error) {
 
 	switch t := res.(type) {
 	case *SelfInfoNotification:
-		return t, nil
+		return &t.SelfInfo, nil
 	case *ErrNotification:
 		return nil, poop.Chain(t.Error())
 	}
