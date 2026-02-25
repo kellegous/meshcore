@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/kellegous/meshcore"
@@ -119,10 +120,10 @@ func run(ctx context.Context) error {
 
 		g, ctx := errgroup.WithContext(ctx)
 		g.Go(func() error {
-			return resetContacts(ctx, click.Conn)
+			return resetContacts(ctx, click)
 		})
 		g.Go(func() error {
-			return resetContacts(ctx, clack.Conn)
+			return resetContacts(ctx, clack)
 		})
 		if err := g.Wait(); err != nil {
 			return poop.Chain(err)
@@ -149,7 +150,37 @@ func run(ctx context.Context) error {
 		return poop.Chain(err)
 	}
 
-	// get time & set time
+	if err := func() error {
+		narrator.Printf("%s\n", center("Getting & Setting Time", width))
+
+		if err := getAndSetTime(ctx, click); err != nil {
+			return poop.Chain(err)
+		}
+
+		if err := getAndSetTime(ctx, clack); err != nil {
+			return poop.Chain(err)
+		}
+
+		return nil
+	}(); err != nil {
+		return poop.Chain(err)
+	}
+
+	if err := func() error {
+		narrator.Printf("%s\n", center("Sending message to public channel", width))
+
+		if err := exchangeChannelMessage(ctx, click, clack, 0); err != nil {
+			return poop.Chain(err)
+		}
+
+		if err := exchangeChannelMessage(ctx, clack, click, 0); err != nil {
+			return poop.Chain(err)
+		}
+
+		return nil
+	}(); err != nil {
+		return poop.Chain(err)
+	}
 
 	// set advert name
 
@@ -255,20 +286,94 @@ func connect(
 	return nil, poop.Newf("invalid transport: %s", tx)
 }
 
+func exchangeChannelMessage(
+	ctx context.Context,
+	sender *Actor,
+	receiver *Actor,
+	channelIndex byte,
+) error {
+	g, bgCtx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		for notif, err := range receiver.Notifications(bgCtx, meshcore.NotificationTypeMsgWaiting) {
+			if err != nil {
+				return poop.Chain(err)
+			}
+
+			msgWaiting, ok := notif.(*meshcore.MsgWaitingNotification)
+			if !ok {
+				return poop.Newf("unexpected sent notification: %T", msgWaiting)
+			}
+
+			receiver.Printf("message waiting")
+
+			msg, err := receiver.SyncNextMessage(ctx)
+			if err != nil {
+				return poop.Chain(err)
+			}
+
+			channelMsg := msg.FromChannel()
+			if channelMsg == nil {
+				return poop.New("no channel message received")
+			}
+
+			receiver.Printf(
+				"received message from channel #%d with the text: %s",
+				channelMsg.ChannelIndex,
+				channelMsg.Text,
+			)
+
+			break
+		}
+		return nil
+	})
+
+	sender.Printf("sending message to channnel #%d", channelIndex)
+	if err := sender.SendChannelTextMessage(ctx, channelIndex, "Hello", meshcore.TextTypePlain); err != nil {
+		return poop.Chain(err)
+	}
+
+	if err := g.Wait(); err != nil {
+		return poop.Chain(err)
+	}
+
+	return nil
+}
+
+func getAndSetTime(
+	ctx context.Context,
+	actor *Actor,
+) error {
+	t, err := actor.GetDeviceTime(ctx)
+	if err != nil {
+		return poop.Chain(err)
+	}
+	actor.Printf("device time: %s", t.Format(time.RFC3339))
+
+	now := time.Now()
+	if err := actor.SetDeviceTime(ctx, now); err != nil {
+		return poop.Chain(err)
+	}
+	actor.Printf("set device time to %s", now.Format(time.RFC3339))
+
+	return nil
+}
+
 func resetContacts(
 	ctx context.Context,
-	conn *meshcore.Conn,
+	actor *Actor,
 ) error {
-	contacts, err := conn.GetContacts(ctx, nil)
+	contacts, err := actor.GetContacts(ctx, nil)
 	if err != nil {
 		return poop.Chain(err)
 	}
 
 	for _, contact := range contacts {
-		if err := conn.RemoveContact(ctx, &contact.PublicKey); err != nil {
+		if err := actor.RemoveContact(ctx, &contact.PublicKey); err != nil {
 			return poop.Chain(err)
 		}
 	}
+
+	actor.Printf("removed %d contacts", len(contacts))
 
 	return nil
 }
