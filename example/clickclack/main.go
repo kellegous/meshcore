@@ -149,6 +149,22 @@ func run(ctx context.Context) error {
 		return poop.Chain(err)
 	}
 
+	// get time & set time
+
+	// set advert name
+
+	// get telemetry
+
+	// get status
+
+	// send a channel message
+
+	// send a context message
+
+	// sign a message
+
+	// create a new channel & send message to it
+
 	return nil
 }
 
