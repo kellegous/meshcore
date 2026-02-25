@@ -14,6 +14,7 @@ import (
 	meshcore_serial "github.com/kellegous/meshcore/serial"
 	"github.com/kellegous/poop"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/term"
 	"tinygo.org/x/bluetooth"
 )
 
@@ -29,7 +30,7 @@ type Flags struct {
 }
 
 type Actor struct {
-	Name string
+	Info *meshcore.SelfInfo
 	*meshcore.Conn
 	Printer
 }
@@ -40,7 +41,7 @@ func main() {
 	}
 }
 
-func getPrintf(
+func getPrinter(
 	useColor bool,
 	c *color.Color,
 ) Printer {
@@ -48,6 +49,24 @@ func getPrintf(
 		return fmt.Printf
 	}
 	return c.Printf
+}
+
+func center(text string, n int) string {
+	spaces := n - len(text)
+	if spaces < 0 {
+		spaces = 0
+	}
+	l := spaces / 2
+	r := spaces - l
+	return strings.Repeat(" ", l) + text + strings.Repeat(" ", r)
+}
+
+func getWidth() (int, error) {
+	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		return 0, err
+	}
+	return width, nil
 }
 
 func run(ctx context.Context) error {
@@ -61,65 +80,42 @@ func run(ctx context.Context) error {
 		os.Exit(1)
 	}
 
-	narrator := getPrintf(flags.Color, color.New(color.FgGreen))
+	width, err := getWidth()
+	if err != nil {
+		return poop.Chain(err)
+	}
+
+	narrator := getPrinter(flags.Color, color.New(color.BgGreen, color.FgBlack))
 
 	click, err := newActor(
 		ctx,
-		"click",
 		flag.Arg(0),
-		getPrintf(flags.Color, color.New(color.FgCyan)),
-		onSend("click", flags.Verbose),
-		onRecv("click", flags.Verbose),
+		getPrinter(flags.Color, color.New(color.FgCyan)),
+		flags.Verbose,
 	)
 	if err != nil {
 		return poop.Chain(err)
 	}
 	defer click.Disconnect()
 
-	click.Printf("click: %s\n", flag.Arg(0))
+	click.Printf("connected to %s", flag.Arg(0))
 
 	clack, err := newActor(
 		ctx,
-		"clack",
 		flag.Arg(1),
-		getPrintf(flags.Color, color.New(color.FgYellow)),
-		onSend("clack", flags.Verbose),
-		onRecv("clack", flags.Verbose),
+		getPrinter(flags.Color, color.New(color.FgYellow)),
+		flags.Verbose,
 	)
 	if err != nil {
 		return poop.Chain(err)
 	}
 	defer clack.Disconnect()
 
-	clack.Printf("clack: %s\n", flag.Arg(1))
-
-	clickInfo, err := click.GetSelfInfo(ctx)
-	if err != nil {
-		return poop.Chain(err)
-	}
-	click.Printf(
-		"click: self info PublicKey=%s, AdvertName=%s, AdvertLat=%0.3f, AdvertLon=%0.3f\n",
-		clickInfo.PublicKey.String(),
-		clickInfo.Name,
-		clickInfo.AdvLat,
-		clickInfo.AdvLon,
-	)
-
-	clackInfo, err := clack.GetSelfInfo(ctx)
-	if err != nil {
-		return poop.Chain(err)
-	}
-	clack.Printf(
-		"clack: self info PublicKey=%s, AdvertName=%s, AdvertLat=%0.3f, AdvertLon=%0.3f\n",
-		clackInfo.PublicKey.String(),
-		clackInfo.Name,
-		clackInfo.AdvLat,
-		clackInfo.AdvLon,
-	)
+	clack.Printf("connected to %s", flag.Arg(1))
 
 	// reset contacts
 	if err := func() error {
-		narrator.Printf("resetting contacts\n")
+		narrator.Printf("%s\n", center("Resetting Contacts", width))
 
 		g, ctx := errgroup.WithContext(ctx)
 		g.Go(func() error {
@@ -138,8 +134,7 @@ func run(ctx context.Context) error {
 
 	// exchange contacts
 	if err := func() error {
-		fmt.Printf("exchanging contacts\n")
-		defer fmt.Printf("contacts exchanged\n")
+		narrator.Printf("%s\n", center("Exchanging Contacts", width))
 
 		if err := discover(ctx, click, clack); err != nil {
 			return poop.Chain(err)
@@ -157,41 +152,52 @@ func run(ctx context.Context) error {
 	return nil
 }
 
-func onSend(name string, verbose bool) func(code meshcore.CommandCode, data []byte) {
+func onSend(verbose bool, p Printer) func(code meshcore.CommandCode, data []byte) {
 	if !verbose {
 		return func(code meshcore.CommandCode, data []byte) {}
 	}
 	return func(code meshcore.CommandCode, data []byte) {
-		fmt.Printf("%s: <send: %v>\n", name, code)
+		p.Printf("<send: %v>", code)
 	}
 }
 
-func onRecv(name string, verbose bool) func(code meshcore.NotificationCode, data []byte) {
+func onRecv(verbose bool, p Printer) func(code meshcore.NotificationCode, data []byte) {
 	if !verbose {
 		return func(code meshcore.NotificationCode, data []byte) {}
 	}
 	return func(code meshcore.NotificationCode, data []byte) {
-		fmt.Printf("%s: <recv: %v>\n", name, code)
+		p.Printf("<recv: %v>", code)
 	}
 }
 
 func newActor(
 	ctx context.Context,
-	name string,
 	addr string,
 	printer Printer,
-	onSend func(code meshcore.CommandCode, data []byte),
-	onRecv func(code meshcore.NotificationCode, data []byte),
+	verbose bool,
 ) (*Actor, error) {
-	conn, err := connect(ctx, addr, onSend, onRecv)
+	var info *meshcore.SelfInfo
+	p := func(format string, a ...any) (int, error) {
+		// TODO(kellegous): This is kind of dumb.
+		if info == nil {
+			return 0, nil
+		}
+		msg := fmt.Sprintf(format, a...)
+		key := hex.EncodeToString(info.PublicKey.Prefix(6))
+		return printer.Printf("%s: %s\n", key, msg)
+	}
+
+	conn, err := connect(ctx, addr, onSend(verbose, p), onRecv(verbose, p))
 	if err != nil {
 		return nil, poop.Chain(err)
 	}
-	return &Actor{
-		Name:    name,
-		Conn:    conn,
-		Printer: printer,
-	}, nil
+
+	info, err = conn.GetSelfInfo(ctx)
+	if err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	return &Actor{Info: info, Conn: conn, Printer: p}, nil
 }
 
 func connect(
@@ -269,8 +275,7 @@ func discover(
 			}
 
 			listener.Printf(
-				"%s: received advert for %s\n",
-				listener.Name,
+				"received advert for %s",
 				hex.EncodeToString(advert.PublicKey.Prefix(6)),
 			)
 			break
@@ -278,7 +283,7 @@ func discover(
 		return nil
 	})
 
-	advertiser.Printf("%s: sending advert\n", advertiser.Name)
+	advertiser.Printf("sending advert")
 	if err := advertiser.SendAdvert(ctx, meshcore.SelfAdvertTypeFlood); err != nil {
 		return poop.Chain(err)
 	}
