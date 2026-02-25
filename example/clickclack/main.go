@@ -188,9 +188,7 @@ func run(ctx context.Context) error {
 
 	// get status
 
-	// send a channel message
-
-	// send a context message
+	// send a contact message
 
 	// sign a message
 
