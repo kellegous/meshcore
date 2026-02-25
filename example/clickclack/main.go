@@ -182,6 +182,22 @@ func run(ctx context.Context) error {
 		return poop.Chain(err)
 	}
 
+	if err := func() error {
+		narrator.Printf("%s\n", center("Sending message to contact", width))
+
+		if err := exchangeContactMessage(ctx, click, clack); err != nil {
+			return poop.Chain(err)
+		}
+
+		if err := exchangeContactMessage(ctx, clack, click); err != nil {
+			return poop.Chain(err)
+		}
+
+		return nil
+	}(); err != nil {
+		return poop.Chain(err)
+	}
+
 	// set advert name
 
 	// get telemetry
@@ -282,6 +298,58 @@ func connect(
 	}
 
 	return nil, poop.Newf("invalid transport: %s", tx)
+}
+
+func exchangeContactMessage(
+	ctx context.Context,
+	sender *Actor,
+	receiver *Actor,
+) error {
+	g, bgCtx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		for notif, err := range receiver.Notifications(bgCtx, meshcore.NotificationTypeMsgWaiting) {
+			if err != nil {
+				return poop.Chain(err)
+			}
+
+			msgWaiting, ok := notif.(*meshcore.MsgWaitingNotification)
+			if !ok {
+				return poop.Newf("unexpected sent notification: %T", msgWaiting)
+			}
+
+			receiver.Printf("message waiting")
+
+			msg, err := receiver.SyncNextMessage(ctx)
+			if err != nil {
+				return poop.Chain(err)
+			}
+
+			contactMsg := msg.FromContact()
+			if contactMsg == nil {
+				return poop.New("no contact message received")
+			}
+
+			receiver.Printf(
+				"received message from %s with the text: %s",
+				hex.EncodeToString(contactMsg.PubKeyPrefix[:]),
+				contactMsg.Text,
+			)
+
+			break
+		}
+		return nil
+	})
+
+	sender.Printf("sending message to %s", hex.EncodeToString(receiver.Info.PublicKey.Prefix(6)))
+	if _, err := sender.SendTextMessage(ctx, &receiver.Info.PublicKey, "Hello", meshcore.TextTypePlain); err != nil {
+		return poop.Chain(err)
+	}
+
+	if err := g.Wait(); err != nil {
+		return poop.Chain(err)
+	}
+
+	return nil
 }
 
 func exchangeChannelMessage(
