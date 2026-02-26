@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -133,6 +134,23 @@ func run(ctx context.Context) error {
 		return poop.Chain(err)
 	}
 
+	if err := func() error {
+		narrator.Printf("%s\n", center("Deleting Channels", width))
+		g, ctx := errgroup.WithContext(ctx)
+		g.Go(func() error {
+			return resetChannels(ctx, click)
+		})
+		g.Go(func() error {
+			return resetChannels(ctx, clack)
+		})
+		if err := g.Wait(); err != nil {
+			return poop.Chain(err)
+		}
+		return nil
+	}(); err != nil {
+		return poop.Chain(err)
+	}
+
 	// exchange contacts
 	if err := func() error {
 		narrator.Printf("%s\n", center("Exchanging Contacts", width))
@@ -198,11 +216,44 @@ func run(ctx context.Context) error {
 		return poop.Chain(err)
 	}
 
+	if err := func() error {
+		narrator.Printf("%s\n", center("Sending message to secret channel", width))
+
+		var key [16]byte
+		if _, err := rand.Read(key[:]); err != nil {
+			return poop.Chain(err)
+		}
+
+		channel := &meshcore.ChannelInfo{
+			Index:  1,
+			Name:   "Super Secret",
+			Secret: key[:],
+		}
+
+		click.Printf("Adding secret channel")
+		if err := click.SetChannel(ctx, channel); err != nil {
+			return poop.Chain(err)
+		}
+
+		clack.Printf("Adding secret channel")
+		if err := clack.SetChannel(ctx, channel); err != nil {
+			return poop.Chain(err)
+		}
+
+		if err := exchangeChannelMessage(ctx, click, clack, channel.Index); err != nil {
+			return poop.Chain(err)
+		}
+
+		if err := exchangeChannelMessage(ctx, clack, click, channel.Index); err != nil {
+			return poop.Chain(err)
+		}
+
+		return nil
+	}(); err != nil {
+		return poop.Chain(err)
+	}
+
 	// set advert name
-
-	// get telemetry
-
-	// get status
 
 	// send a contact message
 
@@ -360,6 +411,9 @@ func exchangeChannelMessage(
 ) error {
 	g, bgCtx := errgroup.WithContext(ctx)
 	g.Go(func() error {
+		// TODO(kellegous): There is a problem here where the notification
+		// listener is not garanteed to be in place before the message is sent.
+		// This needs to be converted to a iter.Pull2.
 		for notif, err := range receiver.Notifications(bgCtx, meshcore.NotificationTypeMsgWaiting) {
 			if err != nil {
 				return poop.Chain(err)
@@ -440,6 +494,31 @@ func resetContacts(
 	}
 
 	actor.Printf("removed %d contacts", len(contacts))
+
+	return nil
+}
+
+func resetChannels(
+	ctx context.Context,
+	actor *Actor,
+) error {
+	channels, err := actor.GetChannels(ctx)
+	if err != nil {
+		return poop.Chain(err)
+	}
+
+	var count int
+	for _, channel := range channels {
+		if channel.Index == 0 || channel.Name == "" {
+			continue
+		}
+		if err := actor.DeleteChannel(ctx, channel.Index); err != nil {
+			return poop.Chain(err)
+		}
+		count++
+	}
+
+	actor.Printf("removed %d channels", count)
 
 	return nil
 }
