@@ -19,25 +19,27 @@ type NotificationCode byte
 
 const (
 	// Response notifications, arrive in response to a command.
-	NotificationTypeOk             NotificationCode = 0
-	NotificationTypeErr            NotificationCode = 1
-	NotificationTypeContactsStart  NotificationCode = 2
-	NotificationTypeContact        NotificationCode = 3
-	NotificationTypeEndOfContacts  NotificationCode = 4
-	NotificationTypeSelfInfo       NotificationCode = 5
-	NotificationTypeSent           NotificationCode = 6
-	NotificationTypeContactMsgRecv NotificationCode = 7
-	NotificationTypeChannelMsgRecv NotificationCode = 8
-	NotificationTypeCurrTime       NotificationCode = 9
-	NotificationTypeNoMoreMessages NotificationCode = 10
-	NotificationTypeExportContact  NotificationCode = 11
-	NotificationTypeBatteryVoltage NotificationCode = 12
-	NotificationTypeDeviceInfo     NotificationCode = 13
-	NotificationTypePrivateKey     NotificationCode = 14
-	NotificationTypeDisabled       NotificationCode = 15
-	NotificationTypeChannelInfo    NotificationCode = 18
-	NotificationTypeSignStart      NotificationCode = 19
-	NotificationTypeSignature      NotificationCode = 20
+	NotificationTypeOk               NotificationCode = 0
+	NotificationTypeErr              NotificationCode = 1
+	NotificationTypeContactsStart    NotificationCode = 2
+	NotificationTypeContact          NotificationCode = 3
+	NotificationTypeEndOfContacts    NotificationCode = 4
+	NotificationTypeSelfInfo         NotificationCode = 5
+	NotificationTypeSent             NotificationCode = 6
+	NotificationTypeContactMsgRecv   NotificationCode = 7
+	NotificationTypeChannelMsgRecv   NotificationCode = 8
+	NotificationTypeCurrTime         NotificationCode = 9
+	NotificationTypeNoMoreMessages   NotificationCode = 10
+	NotificationTypeExportContact    NotificationCode = 11
+	NotificationTypeBatteryVoltage   NotificationCode = 12
+	NotificationTypeDeviceInfo       NotificationCode = 13
+	NotificationTypePrivateKey       NotificationCode = 14
+	NotificationTypeDisabled         NotificationCode = 15
+	NotificationTypeChannelMsgRecvV3 NotificationCode = 16
+	NotificationTypeContactMsgRecvV3 NotificationCode = 17
+	NotificationTypeChannelInfo      NotificationCode = 18
+	NotificationTypeSignStart        NotificationCode = 19
+	NotificationTypeSignature        NotificationCode = 20
 	// Push notifications, can arrive without a corresponding command.
 	NotificationTypeAdvert         NotificationCode = 0x80 // when companion is set to auto add contacts
 	NotificationTypePathUpdated    NotificationCode = 0x81
@@ -55,38 +57,40 @@ const (
 )
 
 var notificationCodeText = map[NotificationCode]string{
-	NotificationTypeOk:             "Ok",
-	NotificationTypeErr:            "Err",
-	NotificationTypeContactsStart:  "ContactsStart",
-	NotificationTypeContact:        "Contact",
-	NotificationTypeEndOfContacts:  "EndOfContacts",
-	NotificationTypeSelfInfo:       "SelfInfo",
-	NotificationTypeSent:           "Sent",
-	NotificationTypeContactMsgRecv: "ContactMsgRecv",
-	NotificationTypeChannelMsgRecv: "ChannelMsgRecv",
-	NotificationTypeCurrTime:       "CurrTime",
-	NotificationTypeNoMoreMessages: "NoMoreMessages",
-	NotificationTypeExportContact:  "ExportContact",
-	NotificationTypeBatteryVoltage: "BatteryVoltage",
-	NotificationTypeDeviceInfo:     "DeviceInfo",
-	NotificationTypePrivateKey:     "PrivateKey",
-	NotificationTypeDisabled:       "Disabled",
-	NotificationTypeChannelInfo:    "ChannelInfo",
-	NotificationTypeSignStart:      "SignStart",
-	NotificationTypeSignature:      "Signature",
-	NotificationTypeAdvert:         "PushAdvert",
-	NotificationTypePathUpdated:    "PushPathUpdated",
-	NotificationTypeSendConfirmed:  "PushSendConfirmed",
-	NotificationTypeMsgWaiting:     "PushMsgWaiting",
-	NotificationTypeRawData:        "PushRawData",
-	NotificationTypeLoginSuccess:   "PushLoginSuccess",
-	NotificationTypeLoginFail:      "PushLoginFail",
-	NotificationTypeStatus:         "PushStatus",
-	NotificationTypeLogRxData:      "PushLogRxData",
-	NotificationTypeTraceData:      "PushTraceData",
-	NotificationTypeNewAdvert:      "PushNewAdvert",
-	NotificationTypeTelemetry:      "PushTelemetryResponse",
-	NotificationTypeBinaryResponse: "PushBinaryResponse",
+	NotificationTypeOk:               "Ok",
+	NotificationTypeErr:              "Err",
+	NotificationTypeContactsStart:    "ContactsStart",
+	NotificationTypeContact:          "Contact",
+	NotificationTypeEndOfContacts:    "EndOfContacts",
+	NotificationTypeSelfInfo:         "SelfInfo",
+	NotificationTypeSent:             "Sent",
+	NotificationTypeContactMsgRecv:   "ContactMsgRecv",
+	NotificationTypeChannelMsgRecv:   "ChannelMsgRecv",
+	NotificationTypeCurrTime:         "CurrTime",
+	NotificationTypeNoMoreMessages:   "NoMoreMessages",
+	NotificationTypeExportContact:    "ExportContact",
+	NotificationTypeBatteryVoltage:   "BatteryVoltage",
+	NotificationTypeDeviceInfo:       "DeviceInfo",
+	NotificationTypePrivateKey:       "PrivateKey",
+	NotificationTypeDisabled:         "Disabled",
+	NotificationTypeContactMsgRecvV3: "ContactMsgRecvV3",
+	NotificationTypeChannelMsgRecvV3: "ChannelMsgRecvV3",
+	NotificationTypeChannelInfo:      "ChannelInfo",
+	NotificationTypeSignStart:        "SignStart",
+	NotificationTypeSignature:        "Signature",
+	NotificationTypeAdvert:           "PushAdvert",
+	NotificationTypePathUpdated:      "PushPathUpdated",
+	NotificationTypeSendConfirmed:    "PushSendConfirmed",
+	NotificationTypeMsgWaiting:       "PushMsgWaiting",
+	NotificationTypeRawData:          "PushRawData",
+	NotificationTypeLoginSuccess:     "PushLoginSuccess",
+	NotificationTypeLoginFail:        "PushLoginFail",
+	NotificationTypeStatus:           "PushStatus",
+	NotificationTypeLogRxData:        "PushLogRxData",
+	NotificationTypeTraceData:        "PushTraceData",
+	NotificationTypeNewAdvert:        "PushNewAdvert",
+	NotificationTypeTelemetry:        "PushTelemetryResponse",
+	NotificationTypeBinaryResponse:   "PushBinaryResponse",
 }
 
 func (c NotificationCode) String() string {
@@ -157,6 +161,10 @@ func readNotification(code NotificationCode, data []byte) (Notification, error) 
 		return readPrivateKeyNotification(data)
 	case NotificationTypeDisabled:
 		return readDisabledNotification(data)
+	case NotificationTypeContactMsgRecvV3:
+		return readContactMsgRecvV3Notification(data)
+	case NotificationTypeChannelMsgRecvV3:
+		return readChannelMsgRecvV3Notification(data)
 	case NotificationTypeChannelInfo:
 		return readChannelInfoNotification(data)
 	case NotificationTypeSignStart:
@@ -794,6 +802,139 @@ func readLogRxDataNotification(data []byte) (*LogRxDataNotification, error) {
 
 	var err error
 	n.Payload, err = io.ReadAll(r)
+	if err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	return &n, nil
+}
+
+//	RESP_CODE_CONTACT_MSG_RECV_V3 {
+//		code: byte,   // constant 16
+//		snr: byte,     // SNR*4
+//		reserved: bytes(2),   // zeroes
+//		pubkey_prefix: bytes(6),     // just first 6 bytes of sender's public key
+//		path_len: byte,     // 0xFF if was sent direct, otherwise hop count for flood-mode
+//		txt_type: byte,     // one of TXT_TYPE_*  (0 = plain)
+//		sender_timestamp: uint32,
+//		text: varchar    // remainder of frame
+//	  }
+type ContactMsgRecvV3Notification struct {
+	SNR             float64
+	PublicKeyPrefix [6]byte
+	PathLen         byte
+	TextType        TextType
+	SenderTime      time.Time
+	Text            string
+}
+
+func (e *ContactMsgRecvV3Notification) NotificationCode() NotificationCode {
+	return NotificationTypeContactMsgRecvV3
+}
+
+func readContactMsgRecvV3Notification(data []byte) (*ContactMsgRecvV3Notification, error) {
+	var n ContactMsgRecvV3Notification
+	r := bytes.NewReader(data)
+
+	var snr byte
+	if err := binary.Read(r, binary.LittleEndian, &snr); err != nil {
+		return nil, poop.Chain(err)
+	}
+	n.SNR = float64(snr) / 4
+
+	var reserved [2]byte
+	if _, err := io.ReadFull(r, reserved[:]); err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	if _, err := io.ReadFull(r, n.PublicKeyPrefix[:]); err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	if err := binary.Read(r, binary.LittleEndian, &n.PathLen); err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	if err := binary.Read(r, binary.LittleEndian, &n.TextType); err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	var err error
+	n.SenderTime, err = readTime(r)
+	if err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	n.Text, err = readString(r)
+	if err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	n.Text, err = readString(r)
+	if err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	return &n, nil
+}
+
+//	RESP_CODE_CHANNEL_MSG_RECV_V3 {
+//		code: byte,   // constant 17
+//		snr: byte,     // SNR*4
+//		reserved: bytes(2),   // zeroes
+//		channel_idx: byte,   // reserved (0 for now, ie. 'public')
+//		path_len: byte,     // 0xFF if was sent direct, otherwise hop count for flood-mode
+//		txt_type: byte,     // one of TXT_TYPE_*  (0 = plain)
+//		sender_timestamp: uint32,
+//		text: varchar    // remainder of frame
+//	  }
+type ChannelMsgRecvV3Notification struct {
+	SNR          float64
+	ChannelIndex byte
+	PathLen      byte
+	TextType     TextType
+	SenderTime   time.Time
+	Text         string
+}
+
+func (e *ChannelMsgRecvV3Notification) NotificationCode() NotificationCode {
+	return NotificationTypeChannelMsgRecvV3
+}
+
+func readChannelMsgRecvV3Notification(data []byte) (*ChannelMsgRecvV3Notification, error) {
+	var n ChannelMsgRecvV3Notification
+	r := bytes.NewReader(data)
+
+	var snr byte
+	if err := binary.Read(r, binary.LittleEndian, &snr); err != nil {
+		return nil, poop.Chain(err)
+	}
+	n.SNR = float64(snr) / 4
+
+	var reserved [2]byte
+	if _, err := io.ReadFull(r, reserved[:]); err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	if err := binary.Read(r, binary.LittleEndian, &n.ChannelIndex); err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	if err := binary.Read(r, binary.LittleEndian, &n.PathLen); err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	if err := binary.Read(r, binary.LittleEndian, &n.TextType); err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	var err error
+	n.SenderTime, err = readTime(r)
+	if err != nil {
+		return nil, poop.Chain(err)
+	}
+
+	n.Text, err = readString(r)
 	if err != nil {
 		return nil, poop.Chain(err)
 	}

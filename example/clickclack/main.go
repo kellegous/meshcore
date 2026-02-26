@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"iter"
 	"os"
 	"strings"
 	"time"
@@ -217,6 +218,9 @@ func run(ctx context.Context) error {
 	}
 
 	if err := func() error {
+		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+
 		narrator.Printf("%s\n", center("Sending message to secret channel", width))
 
 		var key [16]byte
@@ -243,6 +247,8 @@ func run(ctx context.Context) error {
 		if err := exchangeChannelMessage(ctx, click, clack, channel.Index); err != nil {
 			return poop.Chain(err)
 		}
+
+		time.Sleep(1 * time.Second)
 
 		if err := exchangeChannelMessage(ctx, clack, click, channel.Index); err != nil {
 			return poop.Chain(err)
@@ -409,41 +415,42 @@ func exchangeChannelMessage(
 	receiver *Actor,
 	channelIndex byte,
 ) error {
+	next, done := iter.Pull2(
+		receiver.Notifications(ctx, meshcore.NotificationTypeMsgWaiting),
+	)
+	defer done()
+
 	g, bgCtx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		// TODO(kellegous): There is a problem here where the notification
-		// listener is not garanteed to be in place before the message is sent.
-		// This needs to be converted to a iter.Pull2.
-		for notif, err := range receiver.Notifications(bgCtx, meshcore.NotificationTypeMsgWaiting) {
-			if err != nil {
-				return poop.Chain(err)
-			}
-
-			msgWaiting, ok := notif.(*meshcore.MsgWaitingNotification)
-			if !ok {
-				return poop.Newf("unexpected sent notification: %T", msgWaiting)
-			}
-
-			receiver.Printf("message waiting")
-
-			msg, err := receiver.SyncNextMessage(ctx)
-			if err != nil {
-				return poop.Chain(err)
-			}
-
-			channelMsg := msg.FromChannel()
-			if channelMsg == nil {
-				return poop.New("no channel message received")
-			}
-
-			receiver.Printf(
-				"received message from channel #%d with the text: %s",
-				channelMsg.ChannelIndex,
-				channelMsg.Text,
-			)
-
-			break
+		notif, err, _ := next()
+		if err != nil {
+			return poop.Chain(err)
 		}
+
+		if _, ok := notif.(*meshcore.MsgWaitingNotification); !ok {
+			return poop.Newf("unexpected notification: %T", notif)
+		}
+
+		msg, err := receiver.SyncNextMessage(bgCtx)
+		if err != nil {
+			return poop.Chain(err)
+		}
+
+		if msg == nil {
+			return poop.New("no message received")
+		}
+
+		channelMsg := msg.FromChannel()
+		if channelMsg == nil {
+			return poop.New("no channel message received")
+		}
+
+		receiver.Printf(
+			"received message from channel #%d with the text: %s",
+			channelMsg.ChannelIndex,
+			channelMsg.Text,
+		)
+
 		return nil
 	})
 
